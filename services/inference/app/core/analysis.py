@@ -102,10 +102,12 @@ CONFIG = {
 # ── Heatmap & Speed analytics ───────────────────────────────────────────────
 try:
     from app.core.heatmap import generate_heatmap, estimate_ball_speed
+    from app.core.performance_metrics import calculate_player_metrics
+    from app.core.tactical_engine import calculate_possession, generate_tactical_radar, calculate_dominance
     HEATMAP_AVAILABLE = True
-    logger.info("Heatmap module loaded ✓")
+    logger.info("Heatmap & Tactical modules loaded ✓")
 except ImportError as e:
-    logger.warning(f"Heatmap module not available: {e}")
+    logger.warning(f"Heatmap/Tactical modules not available: {e}")
     HEATMAP_AVAILABLE = False
     generate_heatmap = None
     estimate_ball_speed = None
@@ -130,6 +132,18 @@ except ImportError as e:
     GOALPOST_DETECTION_AVAILABLE = False
     GoalpostDetector = None
     GoalpostTracker = None
+
+# ── Vision Transformers (Sateek Action Spotting) ───────────────────────────
+try:
+    from app.core.transformer_detector import TransformerActionSpotter
+    from app.core.dynamic_calibration import DynamicPitchCalibrator
+    TRANSFORMER_AVAILABLE = True
+    logger.info("Vision Transformer & Dynamic Calibrator loaded ✓")
+except ImportError as e:
+    logger.warning(f"Vision modules not available: {e}")
+    TRANSFORMER_AVAILABLE = False
+    TransformerActionSpotter = None
+    DynamicPitchCalibrator = None
 
 # ── SoccerNet (football-specific event detection) ────────────────────────────
 try:
@@ -1166,9 +1180,21 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 _goalpost_tracker = GoalpostTracker(max_distance=100.0)
                 logger.info("GoalpostDetector initialised ✓")
             except Exception as _gpe:
-                logger.warning(f"GoalpostDetector init failed: {_gpe}")
                 _goalpost_detector = None
                 _goalpost_tracker = None
+
+        # Initialize Vision Transformer Action Spotter
+        _transformer_spotter = None
+        _dynamic_calibrator = None
+        vit_frame_buffer = deque(maxlen=16) # VideoMAE best works with 16-frame clips
+        if TRANSFORMER_AVAILABLE and TransformerActionSpotter:
+            try:
+                _transformer_spotter = TransformerActionSpotter()
+                _dynamic_calibrator = DynamicPitchCalibrator()
+                logger.info("Vision Transformer & Auto-Calibrator initialized ✓")
+            except Exception as _te:
+                logger.warning(f"Transformer init failed: {_te}")
+                _transformer_spotter = None
 
         # NOTE: raw_events and last_seen are no longer used here
         # Events are now detected via Vision AI after the main loop
@@ -1195,6 +1221,41 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 # Update frame_w and frame_h for normalized coordinates
                 frame_w, frame_h = 800, int(h * scale)
 
+            # ── Dynamic Pitch Calibration (Auto-Homography) ────────────────
+            current_H = None
+            if _dynamic_calibrator is not None and processed_count % 30 == 0:
+                current_H = _dynamic_calibrator.calibrate_frame(frame)
+                if current_H is not None:
+                    logger.debug("🔄 Auto-Calibration Updated (Camera Moved)")
+
+            # ── Vision Transformer (ViT) Buffering & Analysis ────────────────
+            if _transformer_spotter is not None:
+                # Store frame for temporal analysis (processes a "video cube")
+                # Downscale further for speed as ViT typically uses 224x224
+                vit_input_frame = cv2.resize(frame, (224, 224))
+                vit_frame_buffer.append(vit_input_frame)
+                
+                # Analyze every 16-frame window for complex actions
+                if len(vit_frame_buffer) == 16:
+                    vit_res = _transformer_spotter.spot_actions(vit_frame_buffer, fps)
+                    if vit_res and vit_res["confidence"] >= 0.65:
+                        # Map common kinetics labels to our events if possible
+                        vit_label = vit_res["label"].lower()
+                        our_type = "HIGHLIGHT"
+                        if "goal" in vit_label or "kick" in vit_label: our_type = "GOAL"
+                        elif "tackle" in vit_label: our_type = "TACKLE"
+                        
+                        vit_evt = {
+                            "timestamp": round(timestamp, 2),
+                            "type": our_type,
+                            "confidence": vit_res["confidence"],
+                            "commentary": f"Transformer analysis: {vit_res['label']}",
+                            "finalScore": round(vit_res["confidence"] * 10, 1),
+                            "source": "vision_transformer"
+                        }
+                        emit_live_event(match_id, vit_evt)
+                        logger.info(f"🤖 ViT DETECTED: {vit_res['label']} ({our_type}) at {timestamp:.2f}s")
+
             # ── Motion window ────────────────────────────────────────────────
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             if prev_gray is not None:
@@ -1215,7 +1276,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 if m_score >= CONFIG["MOTION_PEAK_THRESHOLD"]:
                     # Grab current frame for analysis
                     analysis_res = analyze_frame_with_vision(frame, timestamp, context=f"Language: {language}")
-                    if analysis_res["event_type"] != "NONE" and analysis_res["confidence"] >= 0.5:
+                    if analysis_res["event_type"] != "NONE" and analysis_res["confidence"] >= 0.65:
                         live_evt = {
                             "timestamp": round(timestamp, 2),
                             "type": analysis_res["event_type"],
@@ -1232,9 +1293,11 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             # ── Progress update ──────────────────────────────────────────────
             if processed_count % 5 == 0 and total_frames > 0:
                 try:
+                    # Frame processing = 0-60% of total progress
+                    frame_pct = int((frame_count / total_frames) * 60)
                     requests.post(
                         f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
-                        json={"progress": int((frame_count / total_frames) * 99)},
+                        json={"progress": min(frame_pct, 60)},
                         timeout=1,
                     )
                 except Exception:
@@ -1273,7 +1336,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 # Check cache first
                 cached_result = _frame_cache.get(yolo_frame) if CONFIG["ENABLE_INFERENCE_CACHING"] else None
                 
-                if cached_result:
+                if cached_result and isinstance(cached_result, tuple) and len(cached_result) == 2:
                     results, ball_results = cached_result
                     logger.debug(f"Cache hit for frame {processed_count}")
                 else:
@@ -1432,9 +1495,23 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             logger.info("Smoothing ball trajectories...")
             track_frames = smooth_ball_trajectory(track_frames, window_size=CONFIG["BALL_SMOOTHING_WINDOW"])
 
+        # ── Helper for granular progress updates ─────────────────────────────
+        def emit_progress(pct: int, stage: str = ""):
+            try:
+                requests.post(
+                    f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
+                    json={"progress": min(pct, 99)},
+                    timeout=1,
+                )
+                if stage:
+                    logger.info(f"Progress {pct}%: {stage}")
+            except Exception:
+                pass
+
         # ══════════════════════════════════════════════════════════════════════
         # ██ SOCCERNET EVENT DETECTION (football-specific trained model) ██
         # ══════════════════════════════════════════════════════════════════════
+        emit_progress(62, "SoccerNet event detection")
         logger.info("Phase 2: SoccerNet football event detection...")
         
         raw_events = []
@@ -1470,6 +1547,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 logger.error(f"SoccerNet analysis failed: {e}")
                 
         # Secondary: CV Physics Detector (Runs directly on YOLO tracking data)
+        emit_progress(67, "CV Physics analysis")
         if CV_PHYSICS_AVAILABLE and detect_cv_physics:
             try:
                 logger.info("Running CV Physics analysis on track frames...")
@@ -1534,6 +1612,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
         logger.info(f"Final event detection: {len(raw_events)} events")
         
         # ── Score events & emit live ─────────────────────────────────────────
+        emit_progress(72, "Scoring events")
         scored_events: list = []
         for ev in raw_events:
             m_score   = _get_motion_at(motion_windows, ev["timestamp"])
@@ -1545,6 +1624,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             emit_live_event(match_id, scored_ev)
 
         # ── Gemini commentary per event ──────────────────────────────────────
+        emit_progress(75, f"Generating AI commentary for {len(scored_events)} events")
         for i, ev in enumerate(scored_events):
             ctx = scored_events[max(0, i - 3):i] + scored_events[i + 1:i + 3]
             ev["commentary"] = generate_commentary(
@@ -1552,6 +1632,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             )
 
         # ── PHASE 2: Highlights with narrative flow ──────────────────────────
+        emit_progress(80, "Selecting highlights")
         if CONFIG["SMART_HIGHLIGHT_SELECTION"]:
             logger.info("Selecting highlights with narrative context...")
             highlights = select_highlights_with_narrative(
@@ -1563,6 +1644,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
 
         highlight_reel_url = None
         try:
+            emit_progress(83, "Generating highlight reel with TTS & music")
             logger.info("Generating highlight reel with TTS, music, and crowd noise...")
             UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
             # Use original video for highlight reel (compressed is 1fps)
@@ -1576,11 +1658,21 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 aspect_ratio=aspect_ratio,
                 language=language
             )
+            # Unpack dict result — update highlights with per-clip videoUrl
+            if isinstance(highlight_reel_url, dict):
+                clip_urls = highlight_reel_url.get('clip_urls', [])
+                highlight_reel_url = highlight_reel_url.get('reel_url')
+                for i, h in enumerate(highlights):
+                    clip_url = clip_urls[i] if i < len(clip_urls) else None
+                    if clip_url:
+                        h['videoUrl'] = clip_url
+                logger.info(f"Per-clip URLs assigned to {sum(1 for h in highlights if h.get('videoUrl'))} highlights")
         except Exception as e:
             logger.warning(f"Highlight reel generation skipped: {e}")
 
 
         # ── Heatmap Generation ────────────────────────────────────────────────
+        emit_progress(88, "Generating heatmap & analytics")
         heatmap_url = None
         top_speed_kmh = 0.0
         if HEATMAP_AVAILABLE and generate_heatmap and track_frames:
@@ -1604,6 +1696,28 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                     logger.info(f"Top ball speed: {top_speed_kmh:.1f} km/h")
             except Exception as e:
                 logger.warning(f"Ball speed estimation failed: {e}")
+
+        # ── Advanced Tactical Analysis ────────────────────────────────────────
+        advanced_stats = {}
+        if HEATMAP_AVAILABLE and track_frames:
+            try:
+                logger.info("Running Advanced Tactical Analysis...")
+                p_metrics = calculate_player_metrics(track_frames, fps)
+                possession = calculate_possession(track_frames)
+                dominance = calculate_dominance(track_frames)
+                radar_filename = f"radar_{match_id}.png"
+                radar_path = str(UPLOADS_DIR / radar_filename)
+                generate_tactical_radar(track_frames, radar_path, team_colors)
+                
+                advanced_stats = {
+                    "playerMetrics": p_metrics,
+                    "possession": possession,
+                    "dominance": dominance,
+                    "radarUrl": f"/uploads/{radar_filename}"
+                }
+                logger.info("Tactical analysis complete")
+            except Exception as e:
+                logger.warning(f"Tactical analysis failed: {e}")
 
         # ── PHASE 2: Context-aware analysis ──────────────────────────────────
         formation_data = {}
@@ -1649,6 +1763,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             logger.info(f"Audio volumes: {audio_volumes}")
 
         # ── Gemini match summary ──────────────────────────────────────────────
+        emit_progress(93, "Generating AI match summary")
         logger.info("Generating Gemini match summary…")
         summary = generate_match_summary(scored_events, highlights, duration, language=language)
         if not summary:
@@ -1682,6 +1797,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             return obj
 
         # ── Thumbnail Generation ─────────────────────────────────────────────
+        emit_progress(97, "Generating thumbnail")
         thumbnail_url = None
         try:
             cap_thumb = cv2.VideoCapture(original_video_path)
@@ -1732,6 +1848,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             "topSpeedKmh":   round(float(top_speed_kmh), 1),
             "videoUrl":      f"http://localhost:4000/uploads/{Path(original_video_path).name}",
             "goalpostDetections": convert_numpy(goalpost_detections),  # Spatial awareness data
+            "advancedStats": convert_numpy(advanced_stats),  # Performance & Tactics stats
             # ── PHASE 2 Analysis Data ────────────────────────────────────────
             "formationData": formation_data,  # Team formation & cohesion
             "trajectoryData": trajectory_data,  # Ball trajectory analysis

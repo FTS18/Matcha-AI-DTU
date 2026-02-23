@@ -1,6 +1,7 @@
 import os
 import logging
 import cv2
+import time
 import numpy as np
 from typing import List, Optional, Dict
 from PIL import Image
@@ -21,7 +22,6 @@ def _get_gemini():
         try:
             import google.generativeai as genai
             genai.configure(api_key=GEMINI_API_KEY)
-            # Fix: Using correct model name gemini-2.0-flash
             _gemini_model = genai.GenerativeModel("gemini-2.0-flash")
             logger.info("Gemini 2.0 Flash loaded ✓")
         except Exception as e:
@@ -29,23 +29,31 @@ def _get_gemini():
             _gemini_model = False
     return _gemini_model if _gemini_model else None
 
-def _get_gemini_vision():
-    global _gemini_vision_model
-    if _gemini_vision_model is None:
-        if not GEMINI_API_KEY:
-            logger.warning("Gemini API key not configured")
-            _gemini_vision_model = False
-            return None
+
+def _call_gemini_with_retry(model, content, max_retries: int = 3):
+    """Call Gemini generate_content with retry + exponential backoff for 429 errors."""
+    delays = [5, 15, 30]  # seconds between retries
+    for attempt in range(max_retries + 1):
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            # Fix: Using correct model name gemini-2.0-flash
-            _gemini_vision_model = genai.GenerativeModel("gemini-2.0-flash")
-            logger.info("Gemini Vision loaded ✓")
+            response = model.generate_content(content)
+            return response
         except Exception as e:
-            logger.warning(f"Gemini Vision unavailable: {e}")
-            _gemini_vision_model = False
-    return _gemini_vision_model if _gemini_vision_model else None
+            err_str = str(e)
+            if "429" in err_str or "quota" in err_str.lower() or "rate" in err_str.lower():
+                if attempt < max_retries:
+                    wait = delays[min(attempt, len(delays) - 1)]
+                    logger.warning(f"Gemini rate limited (attempt {attempt+1}/{max_retries+1}), retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                else:
+                    logger.warning(f"Gemini rate limit exceeded after {max_retries+1} attempts")
+                    raise
+            else:
+                raise
+
+def _get_gemini_vision():
+    """Vision model is the same as text model for gemini-2.0-flash."""
+    return _get_gemini()
 
 def _frame_to_pil(frame):
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -58,19 +66,22 @@ def analyze_frame_with_vision(frame, timestamp: float, context: str = "") -> dic
     
     try:
         pil_image = _frame_to_pil(frame)
-        prompt = """Analyze this football/soccer video frame. Determine if a significant game event is happening.
-IMPORTANT: Be STRICT. Only classify as an event if you're confident it's actually happening in this frame.
-Event types to look for:
-- GOAL: Ball clearly entering/in the goal net, or immediate celebration after scoring
-- SAVE: Goalkeeper making a save, diving, catching or deflecting the ball
-- TACKLE: Clear physical challenge between players for the ball
-- FOUL: Player being fouled, falling unnaturally, referee intervention
-- CELEBRATION: Players clearly celebrating (arms raised, hugging, jumping)
-- NONE: Regular gameplay, nothing significant, unclear, or can't determine
-Respond in this exact format (one line):
-EVENT_TYPE|CONFIDENCE|DESCRIPTION"""
-        
-        response = gemini.generate_content([prompt, pil_image])
+        prompt = """You are a professional football/soccer match analyst AI. Analyze this single frame.
+
+CRITICAL RULES:
+1. Be extremely strict. Most frames are regular gameplay — classify them as NONE.
+2. GOAL: Ball CLEARLY inside the goal net, or players in unmistakable scoring celebration.
+3. SAVE: Goalkeeper ACTIVELY diving, stretching, or deflecting ball. Standing near goal is NOT a save.
+4. TACKLE: Two players in clear physical contact fighting for ball. Running near each other is NOT a tackle.
+5. FOUL: Player falling unnaturally AND referee nearby pointing/holding card.
+6. CELEBRATION: Multiple players in group hug, jumping, or sliding on knees.
+7. If NOT at least 70% sure, classify as NONE.
+8. Confidence must be 0.0-1.0 (e.g., 0.85). Do NOT use percentages.
+
+Respond EXACTLY: EVENT_TYPE|CONFIDENCE|SHORT_DESCRIPTION
+Example: NONE|0.1|Regular midfield passing sequence"""
+
+        response = _call_gemini_with_retry(gemini, [prompt, pil_image])
         text = response.text.strip()
         parts = text.split("|")
         if len(parts) >= 3:
@@ -81,7 +92,12 @@ EVENT_TYPE|CONFIDENCE|DESCRIPTION"""
                 confidence = float(parts[1].strip())
                 confidence = max(0.0, min(1.0, confidence))
             except:
-                confidence = 0.3
+                confidence = 0.0
+            # Reject low-confidence detections to reduce false positives
+            if confidence < 0.65 and event_type != "NONE":
+                logger.debug(f"Rejected low-confidence: {event_type} @ {confidence:.2f}")
+                event_type = "NONE"
+                confidence = 0.0
             description = "|".join(parts[2:]).strip()
             return {"event_type": event_type, "confidence": confidence, "description": description}
         return {"event_type": "NONE", "confidence": 0.0, "description": text[:100]}
@@ -111,7 +127,7 @@ def generate_commentary(event_type, final_score, timestamp, duration, context_ev
     gemini = _get_gemini()
     if gemini:
         try:
-            resp = gemini.generate_content(prompt)
+            resp = _call_gemini_with_retry(gemini, prompt)
             text = resp.text.strip().strip('"').strip("'")
             if text:
                 return text
@@ -144,7 +160,7 @@ def generate_match_summary(scored_events, highlights, duration, language="englis
     gemini = _get_gemini()
     if gemini:
         try:
-            resp = gemini.generate_content(prompt)
+            resp = _call_gemini_with_retry(gemini, prompt)
             text = resp.text.strip()
             if text:
                 return text

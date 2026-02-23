@@ -188,6 +188,17 @@ export default function MatchDetailPage() {
   const [reanalyzing, setReanalyzing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  // Detect screen orientation for responsive aspect ratio
+  useEffect(() => {
+    const checkOrientation = () => {
+      setIsPortrait(window.innerWidth < 768);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    return () => window.removeEventListener('resize', checkOrientation);
+  }, []);
 
   // seekFnRef: VideoPlayer injects its internal seekTo so parent buttons can seek
   const videoSeekRef = useRef<(t: number) => void>(() => { });
@@ -218,7 +229,13 @@ export default function MatchDetailPage() {
     const load = async () => {
       try {
         const data = await client.getMatch(id as string);
-        if (data && data.id) setMatch(data);
+        if (data && data.id) {
+          setMatch(data);
+          // Stop polling when match reaches a terminal state
+          if (data.status === "COMPLETED" || data.status === "FAILED") {
+            clearInterval(iv);
+          }
+        }
       } catch (err) {
         console.error("Match load failed:", err);
       } finally {
@@ -226,7 +243,7 @@ export default function MatchDetailPage() {
       }
     };
     load();
-    const iv = setInterval(load, 5000);
+    const iv = setInterval(load, 4000);
 
     return () => {
       clearInterval(iv);
@@ -396,6 +413,74 @@ export default function MatchDetailPage() {
             );
           })}
         </div>
+
+        {/* ══════ HIGHLIGHT REEL CTA — Always visible when reel exists ══════ */}
+        {match.status === "COMPLETED" && match.highlightReelUrl && (
+          <div className="relative overflow-hidden bg-gradient-to-r from-emerald-950/60 via-emerald-900/30 to-primary/10 border border-primary/30 p-5 sm:p-6 rounded-xl">
+            <div className="absolute -top-6 -right-6 size-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="size-12 bg-primary/20 border border-primary/40 rounded-xl flex items-center justify-center shrink-0">
+                  <Film className="size-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-wide">Highlight Reel Ready</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {match.highlights.length} best moments • AI commentary • Professional editing
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <a
+                  href={getAssetUrl(match.highlightReelUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 text-sm font-bold text-background bg-primary hover:bg-primary/90 px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Play className="size-4" />
+                  {isPortrait ? 'Watch Reel' : 'Watch 16:9 Reel'}
+                </a>
+                <button
+                  onClick={async () => {
+                    try {
+                      setReanalyzing(true);
+                      await client.generateReel(id, "9:16");
+                      setMatch(prev => prev ? { ...prev, status: "PROCESSING" } : prev);
+                    } catch { } finally {
+                      setReanalyzing(false);
+                    }
+                  }}
+                  disabled={reanalyzing}
+                  className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-primary border border-primary/40 hover:bg-primary/10 px-3 py-2.5 rounded-lg transition-all uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {reanalyzing ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
+                  {isPortrait ? 'Gen 9:16' : 'Gen 9:16 Vertical'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════ No reel yet — show generate prompt ══════ */}
+        {match.status === "COMPLETED" && !match.highlightReelUrl && match.highlights.length > 0 && (
+          <div className="bg-card border border-dashed border-primary/20 p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3 flex-1">
+              <Film className="size-5 text-muted-foreground/50" />
+              <div>
+                <p className="text-sm text-muted-foreground">Highlight reel not generated yet</p>
+                <p className="text-xs text-muted-foreground/60">Re-analyze to auto-generate a professional highlight reel</p>
+              </div>
+            </div>
+            <button
+              onClick={handleReanalyze}
+              disabled={reanalyzing}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 px-3 py-2 rounded-lg transition-all uppercase tracking-wide disabled:opacity-50 cursor-pointer"
+            >
+              {reanalyzing ? <Loader2 className="size-3 animate-spin" /> : <Cpu className="size-3" />}
+              Generate Reel
+            </button>
+          </div>
+        )}
 
         {match.summary && (
           <div className="bg-card border border-border p-5">
@@ -644,27 +729,17 @@ export default function MatchDetailPage() {
             {activeTab === "highlights" && (
               <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                 {match.highlightReelUrl && (
-                  <div className="mb-4 p-4 bg-primary/20 border border-primary/30 relative overflow-hidden group/reel">
-                    <div className="absolute top-0 right-0 p-1 bg-primary text-[8px] font-black uppercase text-background -rotate-45 translate-x-3 -translate-y-1 w-20 text-center shadow-xl">PRO REEL</div>
-                    <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2 font-heading uppercase tracking-wide">
-                      <Film className="size-4" /> Broadcast Narrative Reel
-                    </h3>
-                    <p className="text-xs text-muted-foreground mb-3 pr-8">
-                      Professional summary with synchronized AI commentary, localized voices, and smart transition physics.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        <a
-                        href={getAssetUrl(match.highlightReelUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-background bg-primary hover:bg-primary/90 px-4 py-2 transition-all uppercase tracking-wide shadow-lg shadow-primary/20"
-                        >
-                        <Play className="size-4" /> Watch 16:9
-                        </a>
-                        <button className="inline-flex items-center gap-2 text-xs font-semibold text-primary border border-primary/40 hover:bg-primary/10 px-3 py-2 transition-all uppercase tracking-wide">
-                            <Zap className="size-3" /> Gen 9:16 Vertical
-                        </button>
-                    </div>
+                  <div className="mb-3 p-3 bg-primary/10 border border-primary/20 flex items-center gap-3">
+                    <Film className="size-4 text-primary shrink-0" />
+                    <span className="text-xs text-muted-foreground flex-1">Full reel available ↑ see above</span>
+                    <a
+                      href={getAssetUrl(match.highlightReelUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 px-2 py-1 transition-all uppercase tracking-wide"
+                    >
+                      <Play className="size-3" /> Watch
+                    </a>
                   </div>
                 )}
                 {!match.highlights.length && (
@@ -713,21 +788,20 @@ export default function MatchDetailPage() {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
                           onClick={() => playHighlight(h)}
-                          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 border border-primary/30 hover:border-primary px-3 py-1.5 transition-all bg-primary/5 hover:bg-primary/10 uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
+                          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 border border-primary/30 hover:border-primary px-3 py-1.5 transition-all bg-primary/5 hover:bg-primary/10 uppercase tracking-wide cursor-pointer"
                         >
-                          <Play className="size-3.5" /> Play Clip
+                          <Play className="size-3.5" /> Seek in Player
                         </button>
                         {h.videoUrl && (
                           <a
                             href={getAssetUrl(h.videoUrl)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 border border-blue-500/30 hover:border-blue-500 px-3 py-1.5 transition-all bg-blue-500/5 hover:bg-blue-500/10 uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                            download
+                            className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-white/10 hover:border-white/30 px-3 py-1.5 transition-all bg-white/5 hover:bg-white/10 uppercase tracking-wide cursor-pointer"
                           >
-                            <Film className="size-3.5" /> View Generated Clip
+                            <Film className="size-3.5" /> Download MP4
                           </a>
                         )}
                       </div>
@@ -787,7 +861,7 @@ export default function MatchDetailPage() {
                         >
                           {/* Dot on line */}
                           <div className="absolute -left-5 top-1.5 size-3 bg-zinc-900 border border-zinc-700 rounded-full group-hover:border-primary transition-colors" />
-                          
+
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] font-mono text-primary font-bold">{formatTime(ev.timestamp)}</span>
                             <span className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}>
@@ -795,12 +869,12 @@ export default function MatchDetailPage() {
                             </span>
                             <ScoreBadge score={ev.finalScore} />
                           </div>
-                          
+
                           {ev.commentary && (
                             <div className="pl-0 border-l-0">
-                                <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                                    {ev.commentary}
-                                </p>
+                              <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+                                {ev.commentary}
+                              </p>
                             </div>
                           )}
                           {!isLast && <div className="h-px w-full bg-linear-to-r from-zinc-800/50 to-transparent mt-2" />}

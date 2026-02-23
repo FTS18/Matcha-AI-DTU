@@ -95,7 +95,7 @@ export class MatchesService {
     return match;
   }
 
-  async triggerInference(matchId: string, videoUrl: string, startTime?: number, endTime?: number) {
+  async triggerInference(matchId: string, videoUrl: string, startTime?: number, endTime?: number, aspectRatio?: string) {
     const inferenceUrl = process.env.INFERENCE_URL || 'http://localhost:8000';
     const maxAttempts = 5;
     const baseDelayMs = 2000;
@@ -110,7 +110,8 @@ export class MatchesService {
               match_id: matchId,
               video_url: videoUrl,
               start_time: startTime,
-              end_time: endTime
+              end_time: endTime,
+              aspect_ratio: aspectRatio ?? '16:9',
             },
             { timeout: 30000 },
           ) as any,
@@ -298,7 +299,7 @@ export class MatchesService {
     return { ok: true };
   }
 
-  async reanalyzeMatch(id: string, userId: string): Promise<{ ok: boolean }> {
+  async reanalyzeMatch(id: string, userId: string, aspectRatio?: string): Promise<{ ok: boolean }> {
     if (!id || typeof id !== 'string') {
       this.logger.error("Invalid match ID for reanalysis");
       return { ok: false };
@@ -340,7 +341,7 @@ export class MatchesService {
       uploadUrl.startsWith('http://youtu.be') ||
       uploadUrl.includes('youtube.com')) {
       this.logger.log(`Re-analysing YouTube match ${id}: ${uploadUrl}`);
-      this.triggerInference(id, uploadUrl);
+      this.triggerInference(id, uploadUrl, undefined, undefined, aspectRatio);
       return { ok: true };
     }
 
@@ -356,7 +357,7 @@ export class MatchesService {
     const fileName = uploadUrlParts[uploadUrlParts.length - 1];
     const videoPath = path.join(uploadsDir, fileName);
 
-    this.triggerInference(id, videoPath);
+    this.triggerInference(id, videoPath, undefined, undefined, aspectRatio);
     return { ok: true };
   }
 

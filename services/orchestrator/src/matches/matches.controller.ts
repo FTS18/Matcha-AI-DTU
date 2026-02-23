@@ -123,8 +123,8 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/reanalyze')
-  async reanalyzeMatch(@Param('id') id: string, @Req() req: any): Promise<{ ok: boolean }> {
-    const result = await this.matchesService.reanalyzeMatch(id, req.user.userId);
+  async reanalyzeMatch(@Param('id') id: string, @Req() req: any, @Body() body?: { aspect_ratio?: string }): Promise<{ ok: boolean }> {
+    const result = await this.matchesService.reanalyzeMatch(id, req.user.userId, body?.aspect_ratio);
     if (!result.ok) throw new NotFoundException(`Match ${id} not found`);
     return result;
   }
