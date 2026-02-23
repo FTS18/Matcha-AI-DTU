@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Req, UseGuards, Get, UnauthorizedException, UsePipes } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  Get,
+  UnauthorizedException,
+  UsePipes,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod.pipe';
@@ -35,9 +44,10 @@ export class AuthController {
     return {
       id: user.id,
       email: user.email,
-      name: user.firstName && user.lastName 
-        ? `${user.firstName} ${user.lastName}` 
-        : user.name || user.email.split('@')[0],
+      name:
+        user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user.name || user.email.split('@')[0],
     };
   }
 }

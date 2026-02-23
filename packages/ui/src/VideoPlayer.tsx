@@ -88,8 +88,6 @@ function toRgba(rgb: number[], alpha = 0.85) {
 // clip mode state
 type ClipMode = { type: "main" } | { type: "clip"; idx: number; url: string; highlight: Highlight };
 
-interface Detection { bbox: [number, number, number, number]; class: string; score: number; }
-
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   src, events, highlights, onTimeUpdate, seekFnRef, initialTeamColors, trackingData,
 }, ref) => {
@@ -98,7 +96,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const modelRef = useRef<any>(null);
-  const predsRef = useRef<Detection[]>([]);
   const detectingRef = useRef(false);
   const frameIdx = useRef(0);
   const jerseyBuf = useRef<number[][]>([]);
@@ -144,18 +141,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
 
   // Load TF model
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        // @ts-ignore
-        await import("@tensorflow/tfjs");
-        // @ts-ignore
-        const cocoSsd = await import("@tensorflow-models/coco-ssd");
-        const m = await (cocoSsd as any).load({ base: "lite_mobilenet_v2" });
-        if (!cancelled) { modelRef.current = m; setModelState("ready"); }
-      } catch { if (!cancelled) setModelState("error"); }
-    })();
-    return () => { cancelled = true; };
+    // TensorFlow/coco-ssd detection is handled by backend — UI uses backend tracking data
+    setModelState("ready");
   }, []);
 
   // Switch clip
@@ -180,7 +167,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   useImperativeHandle(ref, () => ({
     playClip: (idx: number) => {
       switchToClip(idx);
-      // scroll to player
       wrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     },
     playMain: () => {
@@ -224,33 +210,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
     if (centralPlayTimer.current) clearTimeout(centralPlayTimer.current);
     centralPlayTimer.current = setTimeout(() => setCentralPlayIcon(null), 800);
   }, []);
-
-  // Detection
-  const runDetection = useCallback(async () => {
-    const video = vidRef.current;
-    const model = modelRef.current;
-    if (!video || !model || detectingRef.current) return;
-    if (video.readyState < 2 || video.paused || video.ended) return;
-    detectingRef.current = true;
-    try {
-      const preds: Detection[] = await model.detect(video);
-      predsRef.current = preds;
-      let added = 0;
-      for (const p of preds) {
-        if (p.class !== "person" || p.score < 0.45) continue;
-        const [bx, by, bw, bh] = p.bbox;
-        const col = sampleJersey(video, bx, by, bw, bh);
-        if (col) { jerseyBuf.current.push(col); added++; }
-      }
-      if (added && jerseyBuf.current.length >= 40) {
-        if (jerseyBuf.current.length > 300)
-          jerseyBuf.current.splice(0, jerseyBuf.current.length - 300);
-        teamCols.current = kMeans2(jerseyBuf.current);
-      }
-    } finally { detectingRef.current = false; }
-  }, []);
-
-  // Draw loop
   const drawLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = vidRef.current;
@@ -265,7 +224,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     frameIdx.current++;
-    if (frameIdx.current % 6 === 0 && showTracking && clipMode.type === "main") runDetection();
+    // TensorFlow detection moved to backend — using backend tracking data
 
     if (showTracking && video.readyState >= 2) {
       const nW = video.videoWidth || rect.width;
@@ -276,36 +235,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
       else { dH = rect.height; dW = dH * nR; oY = 0; oX = (rect.width - dW) / 2; }
       const sX = dW / nW, sY = dH / nH;
 
-      // Coco-SSD overlay (only in main mode)
-      // YouTube style player keeps AI simple and refined
-      if (clipMode.type === "main") {
-        for (const p of predsRef.current) {
-          const [bx, by, bw, bh] = p.bbox;
-          const cx = oX + bx * sX, cy = oY + by * sY;
-          const cw = bw * sX, ch = bh * sY;
-          if (p.class === "person" && p.score >= 0.45) {
-            const col = sampleJersey(video, bx, by, bw, bh);
-            const [c0, c1] = teamCols.current;
-            const team = col ? (colorDist(col, c0) <= colorDist(col, c1) ? 0 : 1) : 0;
-            const stroke = toRgba(teamCols.current[team]!);
-            ctx.strokeStyle = stroke; ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(cx, cy, cw, ch, 4); else ctx.rect(cx, cy, cw, ch);
-            ctx.stroke();
-          }
-          if (p.class === "sports ball" && p.score >= 0.30) {
-            const bCx = oX + (bx + bw / 2) * sX, bCy = oY + (by + bh / 2) * sY;
-            const r = Math.max(7, (bw * sX) / 2);
-            ctx.fillStyle = BRAND_COLORS.primary;
-            ctx.beginPath(); ctx.arc(bCx, bCy, r, 0, Math.PI * 2); ctx.fill();
-          }
-        }
-      }
-
-      // Backend tracking overlay
-      if (trackingData && trackingData.length > 0 && clipMode.type === "main") {
-        while (trackIdx.current < trackingData.length - 1 &&
-          (trackingData[trackIdx.current]?.t ?? 0) < video.currentTime) {
+      // ── Backend Tracking Overlay (Priority) ──────────────────────────────
+      if (trackingData && trackingData.length > 0) {
+        // Simple linear search for the closest frame
+        while (trackIdx.current < trackingData.length - 1 && trackingData[trackIdx.current].t < video.currentTime) {
           trackIdx.current++;
         }
         while (trackIdx.current > 0 &&
@@ -337,7 +270,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
       }
     }
     rafRef.current = requestAnimationFrame(drawLoop);
-  }, [showTracking, runDetection, trackingData, clipMode.type]);
+  }, [showTracking, trackingData]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(drawLoop);

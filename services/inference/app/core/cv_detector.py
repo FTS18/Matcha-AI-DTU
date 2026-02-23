@@ -12,9 +12,10 @@ from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
-# Goal zone heuristic (assumes camera is roughly midfield, goals are at x < 0.15 and x > 0.85)
-GOAL_ZONE_LEFT = 0.15
-GOAL_ZONE_RIGHT = 0.85
+# Goal zone heuristic (assumes camera is roughly midfield, goals are at the far edges)
+# x < 0.10 = left goal zone, x > 0.90 = right goal zone (tightened from 0.15/0.85)
+GOAL_ZONE_LEFT = 0.10
+GOAL_ZONE_RIGHT = 0.90
 
 
 def _distance(p1, p2):
@@ -104,14 +105,23 @@ class PhysicsDetector:
                                 self.ball_velocities.clear()
                                 break
                                 
-            # Goal Zone Dwell (Ball stays inside goal box = GOAL)
-            if curr_pos[0] < (GOAL_ZONE_LEFT - 0.05) or curr_pos[0] > (GOAL_ZONE_RIGHT + 0.05):
+            # Goal Zone Dwell (Ball stays inside goal area = GOAL)
+            # Ball must be in the goal zone: x < GOAL_ZONE_LEFT or x > GOAL_ZONE_RIGHT
+            if curr_pos[0] < GOAL_ZONE_LEFT or curr_pos[0] > GOAL_ZONE_RIGHT:
                 self.goal_zone_dwell_frames += 1
-                if self.goal_zone_dwell_frames == int(self.fps * 1.5): # 1.5s in goal
-                    self.events.append({
-                        "timestamp": t, "type": "GOAL", "confidence": 0.85,
-                        "source": "cv_physics", "desc": "Ball dwelled in goal zone"
-                    })
+                if self.goal_zone_dwell_frames == int(self.fps * 1.0): # 1s dwell in goal zone
+                    # Extra guard: require ball was moving towards goal before dwell
+                    was_moving_toward_goal = False
+                    if self.last_ball_pos is not None:
+                        if curr_pos[0] < GOAL_ZONE_LEFT and self.last_ball_pos[0] > curr_pos[0]:
+                            was_moving_toward_goal = True
+                        elif curr_pos[0] > GOAL_ZONE_RIGHT and self.last_ball_pos[0] < curr_pos[0]:
+                            was_moving_toward_goal = True
+                    if was_moving_toward_goal or self.goal_zone_dwell_frames >= int(self.fps * 2.0):
+                        self.events.append({
+                            "timestamp": t, "type": "GOAL", "confidence": 0.85,
+                            "source": "cv_physics", "desc": "Ball dwelled in goal zone"
+                        })
             else:
                 self.goal_zone_dwell_frames = 0
                 
@@ -167,7 +177,7 @@ class PhysicsDetector:
                     max_cluster_size = size
                     cluster_center = c1
                     
-            if max_cluster_size >= 6:  # 6+ players in tight cluster
+            if max_cluster_size >= 6 and cluster_center is not None:  # 6+ players in tight cluster
                 # Check location
                 if cluster_center[0] < 0.1 or cluster_center[0] > 0.9:
                     if cluster_center[1] < 0.2 or cluster_center[1] > 0.8:

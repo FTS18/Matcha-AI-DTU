@@ -102,5 +102,16 @@ export function createApiClient(baseUrl) {
             }
             return r.json();
         })),
+        /** Update a single highlight (timestamps, eventType, etc.) */
+        updateHighlight: (matchId, highlightId, data) => fetchWithRetry(`${apiBase}/matches/${matchId}/highlights/${highlightId}`, {
+            method: "PATCH",
+            headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
+            body: JSON.stringify(data),
+        }).then((r) => r.json()),
+        /** Delete (reject) a single highlight */
+        deleteHighlight: (matchId, highlightId) => fetchWithRetry(`${apiBase}/matches/${matchId}/highlights/${highlightId}`, {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+        }).then((r) => r.json()),
     };
 }

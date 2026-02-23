@@ -45,9 +45,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={`${bebas.variable} ${barlow.variable} ${dmMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary`}>
+      <body suppressHydrationWarning className={`${bebas.variable} ${barlow.variable} ${dmMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary`}>
         <AuthProvider>
           <SplashScreen />
           <div className="flex-1 flex flex-col relative w-full">

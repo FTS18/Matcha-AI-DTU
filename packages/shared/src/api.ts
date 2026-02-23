@@ -117,6 +117,25 @@ export function createApiClient(baseUrl: string) {
         // Re-throw with status info so AuthContext can decide what to do
         throw err;
       }),
+
+    /** Update a single highlight (timestamps, eventType, etc.) */
+    updateHighlight: (
+      matchId: string,
+      highlightId: string,
+      data: { startTime?: number; endTime?: number; eventType?: string; score?: number; commentary?: string },
+    ): Promise<any> =>
+      fetchWithRetry(`${apiBase}/matches/${matchId}/highlights/${highlightId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(data),
+      }).then((r) => r.json()),
+
+    /** Delete (reject) a single highlight */
+    deleteHighlight: (matchId: string, highlightId: string): Promise<{ ok: boolean }> =>
+      fetchWithRetry(`${apiBase}/matches/${matchId}/highlights/${highlightId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }).then((r) => r.json()),
   };
 }
 

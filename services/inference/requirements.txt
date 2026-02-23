@@ -1,5 +1,6 @@
 fastapi==0.109.2
 uvicorn==0.27.1
+python-dotenv>=1.0.0
 ultralytics>=8.1.0
 opencv-python
 numpy<2.0.0
@@ -16,3 +17,6 @@ roboflow
 transformers>=4.36.0
 timm>=0.9.0
 SoccerNet>=0.1.62
+supervision>=0.19.0
+scikit-learn>=1.3.0
+pandas>=2.0.0

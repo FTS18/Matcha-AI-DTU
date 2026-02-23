@@ -45,11 +45,22 @@ class Cfg:
     TOPDOWN_W             = 200
     TOPDOWN_H             = 300
 
+# Goal polygon: approximate goal-mouth area in broadcast camera view
+# Tighter than before to avoid false positives from mid-field activity
+# Left/right 5% of frame, vertical center 30-70%
 Cfg.DEFAULT_GOAL_POLY_NORM = np.array([
-    [0.38, 0.30],
-    [0.62, 0.30],
-    [0.62, 0.82],
-    [0.38, 0.82],
+    [0.00, 0.30],
+    [0.08, 0.30],
+    [0.08, 0.70],
+    [0.00, 0.70],
+], dtype=np.float32)
+
+# Right-side goal polygon (mirrored)
+Cfg.DEFAULT_GOAL_POLY_NORM_RIGHT = np.array([
+    [0.92, 0.30],
+    [1.00, 0.30],
+    [1.00, 0.70],
+    [0.92, 0.70],
 ], dtype=np.float32)
 
 
@@ -453,7 +464,9 @@ class GoalDetectionEngine:
         self._tracker    = KalmanBallTracker()
         self._cut        = CameraCutDetector()
         self._geometry:  Optional[GoalGeometry] = None
+        self._geometry_right: Optional[GoalGeometry] = None
         self._fsm:       Optional[GoalFSM]      = None
+        self._fsm_right: Optional[GoalFSM]      = None
         self._frame_id   = 0
         self._fps        = 30.0
         self._goals: List[GoalEvent] = []
@@ -465,9 +478,14 @@ class GoalDetectionEngine:
         self.frame_w  = frame_w
         self.frame_h  = frame_h
         self._fps     = max(fps, 1.0)
+        # Left goal
         self._geometry = GoalGeometry(frame_w, frame_h)
         self._geometry.auto_calibrate()
         self._fsm = GoalFSM(self._geometry, self._fps)
+        # Right goal
+        self._geometry_right = GoalGeometry(frame_w, frame_h)
+        self._geometry_right.set_goal_polygon(Cfg.DEFAULT_GOAL_POLY_NORM_RIGHT, build_homography=True)
+        self._fsm_right = GoalFSM(self._geometry_right, self._fps)
 
     def set_goal_polygon(self, pts_norm: np.ndarray):
         if self._geometry is None:
@@ -512,12 +530,18 @@ class GoalDetectionEngine:
         vx, vy = track.velocity() if track else (0.0, 0.0)
         speed  = track.speed()    if track else 0.0
 
-        # Goal FSM
+        # Check both goal FSMs (left and right)
         event = self._fsm.step(
             cx=cx, cy=cy, vx=vx, vy=vy, speed=speed,
             frame_id=self._frame_id, timestamp=timestamp,
             ball_conf=obs.conf if obs else 0.5,
         )
+        if event is None and self._fsm_right is not None:
+            event = self._fsm_right.step(
+                cx=cx, cy=cy, vx=vx, vy=vy, speed=speed,
+                frame_id=self._frame_id, timestamp=timestamp,
+                ball_conf=obs.conf if obs else 0.5,
+            )
         if event:
             self._goals.append(event)
         return event
@@ -554,6 +578,8 @@ class GoalDetectionEngine:
         self._cut.reset()
         if self._fsm:
             self._fsm.reset()
+        if self._fsm_right:
+            self._fsm_right.reset()
         self._frame_id = 0
         self._goals.clear()
 

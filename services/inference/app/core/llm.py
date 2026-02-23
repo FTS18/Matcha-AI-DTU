@@ -12,12 +12,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# ── Lazy API key getter (reads after .env is loaded by main.py) ───────────────
+def _get_gemini_api_key() -> Optional[str]:
+    """Lazy lookup so .env is loaded by main.py before first use."""
+    return os.getenv("GEMINI_API_KEY")
 
 # ── Model selection ───────────────────────────────────────────────────────────
-# gemini-2.0-flash                →  1500 RPD free tier — best for heavy workloads
-# gemini-2.0-flash-lite           →  absolute fastest / lowest quota cost
-# gemini-2.5-flash                →  highest quality but ONLY 20 RPD free tier!
 _PREFERRED_MODELS = [
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
@@ -28,15 +28,12 @@ _gemini_model = None
 _model_lock = threading.Lock()
 
 # ── Quota circuit breaker ─────────────────────────────────────────────────────
-# Once a *daily* quota error is detected, skip ALL Gemini calls for this process
-# lifetime to avoid wasting minutes on doomed retries.
 _quota_exhausted = False
 
 # ── Rate-limiter: max N concurrent Gemini calls at once ───────────────────────
-# Free tier is ~10-15 RPM; 3 concurrent + spacing keeps us well inside that
 _GEMINI_SEMAPHORE = threading.Semaphore(3)
 
-# ── Frame-level response cache (avoids re-calling identical crops) ────────────
+# ── Frame-level response cache ────────────────────────────────────────────────
 _VISION_CACHE: Dict[str, dict] = {}
 _CACHE_LOCK = threading.Lock()
 _MAX_CACHE = 256
@@ -53,7 +50,6 @@ def _cache_get(key: str) -> Optional[dict]:
 def _cache_put(key: str, val: dict):
     with _CACHE_LOCK:
         if len(_VISION_CACHE) >= _MAX_CACHE:
-            # evict oldest quarter
             for k in list(_VISION_CACHE.keys())[:_MAX_CACHE // 4]:
                 del _VISION_CACHE[k]
         _VISION_CACHE[key] = val
@@ -66,17 +62,16 @@ def _get_gemini():
     with _model_lock:
         if _gemini_model is not None:
             return _gemini_model if _gemini_model else None
-        if not GEMINI_API_KEY:
+        api_key = _get_gemini_api_key()
+        if not api_key:
             logger.warning("Gemini API key not configured")
-            _gemini_model = False
             return None
         try:
             import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
+            genai.configure(api_key=api_key)
             for model_name in _PREFERRED_MODELS:
                 try:
                     _gemini_model = genai.GenerativeModel(model_name)
-                    # Quick probe — list_models is cheap, no quota consumed
                     logger.info(f"Gemini loaded: {model_name} ✓")
                     return _gemini_model
                 except Exception:
@@ -92,11 +87,7 @@ def _get_gemini():
 
 def _call_gemini_with_retry(model, content, max_retries: int = 2, timeout: float = 30.0):
     """
-    Call Gemini with:
-    - Semaphore to cap concurrent calls (avoids burst 429s)
-    - Exponential backoff on 429 / quota errors
-    - Jitter to de-sync parallel workers
-    - Overall per-call timeout to prevent pipeline from hanging
+    Call Gemini with semaphore, exponential backoff, jitter, and timeout.
     """
     import random
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
@@ -107,7 +98,6 @@ def _call_gemini_with_retry(model, content, max_retries: int = 2, timeout: float
     with _GEMINI_SEMAPHORE:
         for attempt in range(max_retries + 1):
             try:
-                # Wrap the blocking Gemini call in a thread with a timeout
                 with ThreadPoolExecutor(max_workers=1) as _tp:
                     future = _tp.submit(model.generate_content, content)
                     response = future.result(timeout=timeout)
@@ -119,17 +109,14 @@ def _call_gemini_with_retry(model, content, max_retries: int = 2, timeout: float
                 raise TimeoutError(f"Gemini call timed out after {max_retries+1} attempts")
             except Exception as e:
                 err = str(e)
-                # If model is not found (deprecated), reset cached model so next call tries fallback
                 is_not_found = "404" in err or "not found" in err.lower() or "not supported" in err.lower()
                 if is_not_found:
                     logger.warning(f"Gemini model not found/deprecated, resetting model cache: {err[:120]}")
-                    global _gemini_model
                     with _model_lock:
-                        _gemini_model = None  # force re-probe on next _get_gemini() call
+                        _gemini_model = None
                     raise
                 is_rate = "429" in err or "quota" in err.lower() or "rate" in err.lower() or "resource_exhausted" in err.lower()
                 if is_rate:
-                    # Check if this is a DAILY quota (not just per-minute)
                     is_daily = "PerDay" in err or "limit: 0" in err
                     if is_daily:
                         logger.warning("🚫 Gemini DAILY quota exhausted — disabling Gemini for this session")
@@ -137,7 +124,7 @@ def _call_gemini_with_retry(model, content, max_retries: int = 2, timeout: float
                         raise
                     if attempt < max_retries:
                         wait = base_delays[min(attempt, len(base_delays) - 1)]
-                        wait += random.uniform(0, wait * 0.3)   # jitter
+                        wait += random.uniform(0, wait * 0.3)
                         logger.warning(f"Gemini rate limited (attempt {attempt+1}/{max_retries+1}), retrying in {wait:.1f}s…")
                         time.sleep(wait)
                         continue
@@ -274,7 +261,7 @@ def analyze_frame_with_vision(frame: np.ndarray, timestamp: float, context: str 
 
 def generate_commentary(event_type, final_score, timestamp, duration, context_events=None, language="english"):
     minute   = max(1, int(timestamp / 60))
-    late     = duration > 0 and (timestamp / duration) > 0.85
+    late         = duration > 0 and (timestamp / duration) > 0.85
     energy   = "HIGH INTENSITY" if final_score >= 7.5 else ("MODERATE" if final_score >= 5 else "low key")
     late_str = "in the dying minutes (CRUCIAL late-game moment!)" if late else f"at minute {minute}"
     ctx_str  = ""
@@ -289,6 +276,9 @@ def generate_commentary(event_type, final_score, timestamp, duration, context_ev
         f"{late_str}. The intensity is {energy} (score {final_score:.1f}/10).{ctx_str} "
         f"Make it sound like a live broadcast, building up excitement, describing the build-up, the moment itself, "
         f"and the immediate aftermath. No quotes, no attribution, just the spoken words.\n\n"
+        f"CRITICAL: Do NOT invent player names, team names, shirt numbers, or scorelines. "
+        f"Use only generic terms like 'the striker', 'the midfielder', 'the goalkeeper', 'the attacking team'. "
+        f"Describe only what could plausibly happen during a {event_type} — do not fabricate details.\n\n"
         f"IMPORTANT: Respond ONLY in {language} language."
     )
     gemini = _get_gemini()
@@ -368,7 +358,10 @@ def generate_match_summary(scored_events, highlights, duration, language="englis
         f"Top 5 moments: {tdesc}.\n"
         f"Total events: {len(scored_events)} | Highlights: {len(highlights)}.\n"
         f"Use present tense, analytical but engaging. Describe match narrative — intense phases, "
-        f"key moments, overall character. Don't invent player names or exact scorelines.\n\n"
+        f"key moments, overall character.\n\n"
+        f"CRITICAL: Do NOT invent player names, team names, or exact scorelines. "
+        f"Refer to teams generically (e.g. 'the attacking side', 'the home team'). "
+        f"Only describe events that are in the data above — do not hallucinate extra events.\n\n"
         f"IMPORTANT: Respond ONLY in {language} language."
     )
     gemini = _get_gemini()

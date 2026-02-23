@@ -1,5 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { PrismaClient } from "@matcha/database";
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
+import { PrismaClient } from '@matcha/database';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
@@ -7,15 +11,15 @@ import * as bcrypt from 'bcryptjs';
 export class AuthService {
   private prisma: PrismaClient;
 
-  constructor(
-    private jwtService: JwtService,
-  ) {
+  constructor(private jwtService: JwtService) {
     this.prisma = new PrismaClient();
   }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const lowerEmail = email.toLowerCase();
-    const user = await this.prisma.user.findUnique({ where: { email: lowerEmail } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: lowerEmail },
+    });
     if (!user) return null;
     const isMatch = await bcrypt.compare(pass, user.password);
     if (isMatch) {
@@ -39,10 +43,11 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.firstName && user.lastName
-          ? `${user.firstName} ${user.lastName}`
-          : user.name || user.email.split('@')[0],
-      }
+        name:
+          user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.name || user.email.split('@')[0],
+      },
     };
   }
 

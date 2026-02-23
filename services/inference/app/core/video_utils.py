@@ -8,6 +8,12 @@ import numpy as np
 
 from app.core.tts import tts_generate
 
+try:
+    from app.core.soccer_analysis import process_clip_frames as _sa_process, is_available as _sa_available
+except ImportError:
+    _sa_process = None  # type: ignore
+    _sa_available = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 # ── Logo path (top-right watermark) ──────────────────────────────────────────
@@ -29,6 +35,79 @@ VALID_TRANSITIONS = {
     "diagbr", "hlslice", "hrslice", "vuslice", "vdslice", "hblur", "fadegrays",
     "wipel", "wiper", "wipet", "wipeb",
 }
+
+
+def _annotate_clip_with_soccer_analysis(
+    clip_path: str, output_dir: str, match_id: str, clip_idx: int
+) -> str:
+    """
+    Read a raw video clip, run the soccer-analysis overlay pipeline on its
+    frames (player ellipses, speed/distance, ball control %), then write the
+    annotated frames back to a new file.  Returns the path to the annotated
+    clip (or the original clip path on failure).
+    """
+    try:
+        cap = cv2.VideoCapture(clip_path)
+        if not cap.isOpened():
+            return clip_path
+
+        fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        frames = []
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            frames.append(frame)
+        cap.release()
+
+        if not frames:
+            return clip_path
+
+        logger.info(
+            f"Soccer analysis: annotating clip {clip_idx} "
+            f"({len(frames)} frames, {w}x{h} @ {fps:.1f} fps)"
+        )
+        annotated = _sa_process(frames, fps=fps)
+
+        if annotated is None or len(annotated) == 0:
+            return clip_path
+
+        annotated_path = os.path.join(
+            output_dir, f"sa_v_{match_id}_{clip_idx}.mp4"
+        )
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        writer = cv2.VideoWriter(annotated_path, fourcc, fps, (w, h))
+        for f in annotated:
+            if f.shape[1] != w or f.shape[0] != h:
+                f = cv2.resize(f, (w, h))
+            writer.write(f)
+        writer.release()
+
+        # Re-encode to H.264 so ffmpeg can concat/xfade it reliably
+        h264_path = os.path.join(
+            output_dir, f"sa_h264_{match_id}_{clip_idx}.mp4"
+        )
+        re_cmd = [
+            "ffmpeg", "-y", "-i", annotated_path,
+            "-c:v", "libx264", "-preset", "ultrafast", "-an", h264_path,
+        ]
+        if subprocess.run(re_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
+            if os.path.exists(annotated_path):
+                os.remove(annotated_path)
+            if os.path.exists(clip_path) and clip_path != h264_path:
+                os.remove(clip_path)
+            return h264_path
+        else:
+            if os.path.exists(clip_path) and clip_path != annotated_path:
+                os.remove(clip_path)
+            return annotated_path
+
+    except Exception as e:
+        logger.error(f"Soccer analysis annotation failed for clip {clip_idx}: {e}", exc_info=True)
+        return clip_path
 
 
 def _run_ffmpeg(cmd: list, timeout: int = 120) -> bool:
@@ -244,6 +323,10 @@ def create_highlight_reel(
             ], timeout=120)
 
         if ok and os.path.exists(v_clip) and os.path.getsize(v_clip) > 1024:
+            # ── Soccer Analysis Overlay ──────────────────────────────────────
+            # Annotate clip with player tracking, ellipses, speed & ball control
+            if _sa_process and _sa_available and _sa_available():
+                v_clip = _annotate_clip_with_soccer_analysis(v_clip, output_dir, match_id, i)
             cfg = EVENT_CONFIG.get(event_type, EVENT_CONFIG["HIGHLIGHT"])
             pub_url = f"/uploads/clip_{match_id}_{i}{ar_tag}.mp4"
             clip_public_urls.append(pub_url)

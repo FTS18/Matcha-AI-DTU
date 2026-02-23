@@ -30,8 +30,11 @@ def train_custom_yolo(data_yaml, model_size="s", epochs=50, imgsz=640):
         name="soccer_custom"
     )
     
-    print(f"✅ Training complete! Best weights saved to: {results.save_dir}/weights/best.pt")
-    print( "👉 Copy these weights to services/inference/ and update analysis.py to use them.")
+    if results and results.save_dir:
+        print(f"✅ Training complete! Best weights saved to: {results.save_dir}/weights/best.pt")
+        print("👉 Copy these weights to services/inference/ and update analysis.py to use them.")
+    else:
+        print("✅ Training complete! Check the matcha_training/ directory for weights.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fine-tune YOLO for Soccer")
