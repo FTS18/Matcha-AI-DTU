@@ -20,6 +20,16 @@ export declare function createApiClient(baseUrl: string): {
         user: any;
     }>;
     getMe: () => Promise<any>;
+    /** Update a single highlight (timestamps, eventType, etc.) */
+    updateHighlight: (matchId: string, highlightId: string, data: {
+        startTime?: number;
+        endTime?: number;
+        eventType?: string;
+        score?: number;
+        commentary?: string;
+    }) => Promise<any>;
+    /** Delete (reject) a single highlight */
+    deleteHighlight: (matchId: string, highlightId: string) => Promise<{ ok: boolean }>;
 };
 export type ApiClient = ReturnType<typeof createApiClient>;
 //# sourceMappingURL=api.d.ts.map

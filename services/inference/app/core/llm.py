@@ -7,45 +7,52 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-_gemini_model = None
-_gemini_vision_model = None
+_gemini_model: Optional[object] = None
+_gemini_model_initialized: bool = False
+_gemini_vision_model: Optional[object] = None
+_gemini_vision_model_initialized: bool = False
+
+def _get_gemini_api_key() -> Optional[str]:
+    """Lazy lookup so .env is loaded by main.py before first use."""
+    return os.getenv("GEMINI_API_KEY")
 
 def _get_gemini():
-    global _gemini_model
-    if _gemini_model is None:
-        if not GEMINI_API_KEY:
+    global _gemini_model, _gemini_model_initialized
+    if not _gemini_model_initialized:
+        _gemini_model_initialized = True
+        api_key = _get_gemini_api_key()
+        if not api_key:
             logger.warning("Gemini API key not configured")
-            _gemini_model = False
             return None
         try:
             import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
+            genai.configure(api_key=api_key)
             # Fix: Using correct model name gemini-2.0-flash
             _gemini_model = genai.GenerativeModel("gemini-2.0-flash")
             logger.info("Gemini 2.0 Flash loaded ✓")
         except Exception as e:
             logger.warning(f"Gemini unavailable: {e}")
-            _gemini_model = False
-    return _gemini_model if _gemini_model else None
+            _gemini_model = None
+    return _gemini_model
 
 def _get_gemini_vision():
-    global _gemini_vision_model
-    if _gemini_vision_model is None:
-        if not GEMINI_API_KEY:
+    global _gemini_vision_model, _gemini_vision_model_initialized
+    if not _gemini_vision_model_initialized:
+        _gemini_vision_model_initialized = True
+        api_key = _get_gemini_api_key()
+        if not api_key:
             logger.warning("Gemini API key not configured")
-            _gemini_vision_model = False
             return None
         try:
             import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
+            genai.configure(api_key=api_key)
             # Fix: Using correct model name gemini-2.0-flash
             _gemini_vision_model = genai.GenerativeModel("gemini-2.0-flash")
             logger.info("Gemini Vision loaded ✓")
         except Exception as e:
             logger.warning(f"Gemini Vision unavailable: {e}")
-            _gemini_vision_model = False
-    return _gemini_vision_model if _gemini_vision_model else None
+            _gemini_vision_model = None
+    return _gemini_vision_model
 
 def _frame_to_pil(frame):
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -91,7 +98,7 @@ EVENT_TYPE|CONFIDENCE|DESCRIPTION"""
 
 def generate_commentary(event_type, final_score, timestamp, duration, context_events=None, language="english"):
     minute   = max(1, int(timestamp / 60))
-    late     = duration > 0 and (timestamp / duration) > 0.85
+    late         = duration > 0 and (timestamp / duration) > 0.85
     energy   = "HIGH INTENSITY" if final_score >= 7.5 else ("MODERATE" if final_score >= 5 else "low key")
     late_str = "in the dying minutes (CRUCIAL late-game moment!)" if late else f"at minute {minute}"
     ctx_str  = ""
@@ -106,6 +113,9 @@ def generate_commentary(event_type, final_score, timestamp, duration, context_ev
         f"{late_str}. The intensity is {energy} (score {final_score:.1f}/10).{ctx_str} "
         f"Make it sound like a live broadcast, building up excitement, describing the build-up, the moment itself, "
         f"and the immediate aftermath. No quotes, no attribution, just the spoken words.\n\n"
+        f"CRITICAL: Do NOT invent player names, team names, shirt numbers, or scorelines. "
+        f"Use only generic terms like 'the striker', 'the midfielder', 'the goalkeeper', 'the attacking team'. "
+        f"Describe only what could plausibly happen during a {event_type} — do not fabricate details.\n\n"
         f"IMPORTANT: Respond ONLY in {language} language."
     )
     gemini = _get_gemini()
@@ -138,7 +148,10 @@ def generate_match_summary(scored_events, highlights, duration, language="englis
         f"Top 5 moments: {tdesc}.\n"
         f"Total events: {len(scored_events)} | Highlights: {len(highlights)}.\n"
         f"Use present tense, analytical but engaging. Describe match narrative — intense phases, "
-        f"key moments, overall character. Don't invent player names or exact scorelines.\n\n"
+        f"key moments, overall character.\n\n"
+        f"CRITICAL: Do NOT invent player names, team names, or exact scorelines. "
+        f"Refer to teams generically (e.g. 'the attacking side', 'the home team'). "
+        f"Only describe events that are in the data above — do not hallucinate extra events.\n\n"
         f"IMPORTANT: Respond ONLY in {language} language."
     )
     gemini = _get_gemini()

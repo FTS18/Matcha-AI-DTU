@@ -151,6 +151,18 @@ except ImportError as e:
     CV_PHYSICS_AVAILABLE = False
     detect_cv_physics = None
 
+# ── Soccer Analysis (broadcast-quality overlays) ─────────────────────────────
+try:
+    from app.core.soccer_analysis import is_available as _sa_is_available
+    SOCCER_ANALYSIS_AVAILABLE = _sa_is_available()
+    if SOCCER_ANALYSIS_AVAILABLE:
+        logger.info("Soccer Analysis overlay engine loaded ✓")
+    else:
+        logger.warning("Soccer Analysis overlay: missing dependencies (supervision / scikit-learn)")
+except ImportError as e:
+    logger.warning(f"Soccer Analysis overlay not available: {e}")
+    SOCCER_ANALYSIS_AVAILABLE = False
+
 # ── YOLO ─────────────────────────────────────────────────────────────────────
 try:
     from ultralytics import YOLO  # type: ignore

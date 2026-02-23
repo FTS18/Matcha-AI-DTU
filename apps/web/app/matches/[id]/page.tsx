@@ -6,7 +6,8 @@ import Link from "next/link";
 import {
   ArrowLeft, Play, Clock, Target, Shield, AlertTriangle,
   Zap, Star, BarChart3, TrendingUp, Film, Loader2,
-  Trash2, Copy, Check, Trophy, Cpu, Radio
+  Trash2, Copy, Check, Trophy, Cpu, Radio,
+  CheckCircle, XCircle, Pencil, X, Save
 } from "lucide-react";
 import { ScoreBadge, CopyButton, VideoPlayer, useMatchSocket } from "@matcha/ui";
 import dynamic from "next/dynamic";
@@ -50,6 +51,24 @@ const DEFAULT_EVT = { ...DEFAULT_EVENT_CONFIG, ...THEME_MAP[DEFAULT_EVENT_CONFIG
 
 
 
+
+
+/** Convert seconds → "m:ss" for editable input field */
+function formatTimeInput(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Parse "m:ss" or "mm:ss" string back to seconds, returns null on invalid */
+function parseTimeInput(str: string): number | null {
+  const parts = str.trim().split(":");
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0]!, 10);
+  const s = parseInt(parts[1]!, 10);
+  if (isNaN(m) || isNaN(s) || m < 0 || s < 0 || s > 59) return null;
+  return m * 60 + s;
+}
 
 
 function IntensityChart({ scores, duration }: { scores: EmotionScore[]; duration: number }) {
@@ -188,6 +207,13 @@ export default function MatchDetailPage() {
   const [reanalyzing, setReanalyzing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [showOverlay, setShowOverlay] = useState(true);
+  // Highlight accept/reject & edit state
+  const [acceptedHighlights, setAcceptedHighlights] = useState<Set<string>>(new Set());
+  const [rejectedHighlights, setRejectedHighlights] = useState<Set<string>>(new Set());
+  const [editingHighlight, setEditingHighlight] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    startTime: string; endTime: string; eventType: string;
+  }>({ startTime: "", endTime: "", eventType: "" });
 
   // seekFnRef: VideoPlayer injects its internal seekTo so parent buttons can seek
   const videoSeekRef = useRef<(t: number) => void>(() => { });
@@ -257,6 +283,66 @@ export default function MatchDetailPage() {
       setReanalyzing(false);
     }
   }, [id, client]);
+
+  // ── Highlight accept / reject / edit handlers ──────────────────────────
+  const handleAcceptHighlight = useCallback((highlightId: string) => {
+    setAcceptedHighlights(prev => { const s = new Set(prev); s.add(highlightId); return s; });
+    setRejectedHighlights(prev => { const s = new Set(prev); s.delete(highlightId); return s; });
+  }, []);
+
+  const handleRejectHighlight = useCallback(async (highlightId: string) => {
+    try {
+      await client.deleteHighlight(id, highlightId);
+      setRejectedHighlights(prev => { const s = new Set(prev); s.add(highlightId); return s; });
+      setMatch(prev => prev ? {
+        ...prev,
+        highlights: prev.highlights.filter(h => h.id !== highlightId),
+      } : prev);
+    } catch (err) {
+      console.error("Failed to reject highlight:", err);
+    }
+  }, [id, client]);
+
+  const startEditHighlight = useCallback((h: Highlight) => {
+    setEditingHighlight(h.id);
+    setEditForm({
+      startTime: formatTimeInput(h.startTime),
+      endTime: formatTimeInput(h.endTime),
+      eventType: h.eventType ?? "",
+    });
+  }, []);
+
+  const cancelEditHighlight = useCallback(() => {
+    setEditingHighlight(null);
+  }, []);
+
+  const saveEditHighlight = useCallback(async (highlightId: string) => {
+    try {
+      const startSecs = parseTimeInput(editForm.startTime);
+      const endSecs = parseTimeInput(editForm.endTime);
+      if (startSecs === null || endSecs === null || endSecs <= startSecs) return;
+      const data: { startTime: number; endTime: number; eventType?: string } = {
+        startTime: startSecs,
+        endTime: endSecs,
+      };
+      if (editForm.eventType) data.eventType = editForm.eventType;
+      await client.updateHighlight(id, highlightId, data);
+      setMatch(prev => {
+        if (!prev) return prev;
+        const updated = prev.highlights.map(h =>
+          h.id === highlightId
+            ? { ...h, startTime: startSecs, endTime: endSecs, eventType: editForm.eventType || h.eventType }
+            : h
+        );
+        // Re-sort by startTime so the list order and seekbar positions stay consistent
+        updated.sort((a, b) => a.startTime - b.startTime);
+        return { ...prev, highlights: updated };
+      });
+      setEditingHighlight(null);
+    } catch (err) {
+      console.error("Failed to update highlight:", err);
+    }
+  }, [id, client, editForm]);
 
   // useMemo calls must be above early returns — Rules of Hooks.
   // null-safe defaults ensure they always run unconditionally.
@@ -676,8 +762,14 @@ export default function MatchDetailPage() {
                 {match.highlights.map((h, i) => {
                   const cfg = EVENT_CONFIG[h.eventType ?? ""] ?? DEFAULT_EVT;
                   const isActive = activeHighlight?.id === h.id;
+                  const isAccepted = acceptedHighlights.has(h.id);
+                  const isEditing = editingHighlight === h.id;
                   return (
-                    <div key={h.id} className={`border p-4 transition-all ${isActive ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border-2"}`}>
+                    <div key={h.id} className={`border p-4 transition-all ${
+                      isAccepted ? "border-emerald-400/50 bg-emerald-400/5" :
+                      isActive ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border-2"
+                    }`}>
+                      {/* Header row: number + event badge + accept/reject + score */}
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
                           <span className="size-6 bg-muted flex items-center justify-center text-xs text-muted-foreground font-bold shrink-0">{i + 1}</span>
@@ -687,8 +779,48 @@ export default function MatchDetailPage() {
                             </span>
                           )}
                         </div>
-                        <ScoreBadge score={h.score} />
+                        <div className="flex items-center gap-1.5">
+                          {/* Accept */}
+                          <button
+                            onClick={() => handleAcceptHighlight(h.id)}
+                            title="Accept highlight"
+                            className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
+                              isAccepted
+                                ? "text-emerald-400 bg-emerald-400/15"
+                                : "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-400/10"
+                            }`}
+                          >
+                            <CheckCircle className="size-4" />
+                          </button>
+                          {/* Reject */}
+                          <button
+                            onClick={() => handleRejectHighlight(h.id)}
+                            title="Reject & remove highlight"
+                            className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer focus:outline-none"
+                          >
+                            <XCircle className="size-4" />
+                          </button>
+                          {/* Edit */}
+                          <button
+                            onClick={() => isEditing ? cancelEditHighlight() : startEditHighlight(h)}
+                            title="Edit timestamps & event type"
+                            className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
+                              isEditing
+                                ? "text-amber-400 bg-amber-400/15"
+                                : "text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10"
+                            }`}
+                          >
+                            {isEditing ? <X className="size-4" /> : <Pencil className="size-4" />}
+                          </button>
+                          <ScoreBadge score={h.score} />
+                        </div>
                       </div>
+
+                      {isAccepted && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-semibold uppercase tracking-widest mb-2">
+                          <CheckCircle className="size-3" /> Accepted
+                        </div>
+                      )}
 
                       <div className="h-1 bg-border mb-3 overflow-hidden">
                         <div
@@ -697,12 +829,62 @@ export default function MatchDetailPage() {
                         />
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                        <Clock className="size-3" />
-                        <span className="font-mono">{formatTime(h.startTime)} → {formatTime(h.endTime)}</span>
-                        <span className="text-muted-foreground/50">·</span>
-                        <span>{Math.round(h.endTime - h.startTime)}s</span>
-                      </div>
+                      {/* Editable timestamp / event type form */}
+                      {isEditing ? (
+                        <div className="space-y-2 mb-3 p-3 bg-muted/50 border border-border rounded">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Edit Timestamps & Type</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-muted-foreground block mb-0.5">Start (m:ss)</label>
+                              <input
+                                type="text"
+                                value={editForm.startTime}
+                                onChange={(e) => setEditForm(f => ({ ...f, startTime: e.target.value }))}
+                                placeholder="0:00"
+                                className="w-full text-xs font-mono bg-background border border-border px-2 py-1.5 text-foreground rounded focus:outline-none focus:border-primary"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground block mb-0.5">End (m:ss)</label>
+                              <input
+                                type="text"
+                                value={editForm.endTime}
+                                onChange={(e) => setEditForm(f => ({ ...f, endTime: e.target.value }))}
+                                placeholder="0:30"
+                                className="w-full text-xs font-mono bg-background border border-border px-2 py-1.5 text-foreground rounded focus:outline-none focus:border-primary"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground block mb-0.5">Event Type</label>
+                            <select
+                              value={editForm.eventType}
+                              onChange={(e) => setEditForm(f => ({ ...f, eventType: e.target.value }))}
+                              className="w-full text-xs bg-background border border-border px-2 py-1.5 text-foreground rounded focus:outline-none focus:border-primary cursor-pointer"
+                            >
+                              <option value="">— select —</option>
+                              <option value="GOAL">Goal / Score</option>
+                              <option value="TACKLE">Tackle</option>
+                              <option value="FOUL">Foul</option>
+                              <option value="SAVE">Save</option>
+                              <option value="Celebrate">Celebration</option>
+                            </select>
+                          </div>
+                          <button
+                            onClick={() => saveEditHighlight(h.id)}
+                            className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 border border-emerald-400/30 hover:border-emerald-400 px-3 py-1.5 transition-all bg-emerald-400/5 hover:bg-emerald-400/10 uppercase tracking-wide cursor-pointer focus:outline-none w-full justify-center mt-1"
+                          >
+                            <Save className="size-3.5" /> Save Changes
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                          <Clock className="size-3" />
+                          <span className="font-mono">{formatTime(h.startTime)} → {formatTime(h.endTime)}</span>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span>{Math.round(h.endTime - h.startTime)}s</span>
+                        </div>
+                      )}
 
                       {h.commentary && (
                         <div className="flex items-start gap-1.5 mb-3">

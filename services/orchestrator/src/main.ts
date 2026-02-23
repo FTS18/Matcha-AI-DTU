@@ -7,7 +7,9 @@ const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '100mb';
 const URLENCODED_LIMIT = process.env.URLENCODED_BODY_LIMIT || '1mb';
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT ?? '30000', 10);
-const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
+const CORS_ORIGIN = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : [];
 
 async function bootstrap() {
   try {
@@ -18,14 +20,20 @@ async function bootstrap() {
 
     // CORS — dynamically allow custom arrays or any localhost/127.0.0.1 port.
 
-    const allowedOrigins = CORS_ORIGIN.length > 0
-      ? CORS_ORIGIN
-      : [/^http:\/\/(localhost|127\.0\.0\.1):\d+$/];
+    const allowedOrigins =
+      CORS_ORIGIN.length > 0
+        ? CORS_ORIGIN
+        : [/^http:\/\/(localhost|127\.0\.0\.1):\d+$/];
 
     app.enableCors({
       origin: allowedOrigins,
       methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Range',
+      ],
       credentials: true,
       exposedHeaders: ['Content-Range', 'X-Content-Duration'],
     });
@@ -33,9 +41,9 @@ async function bootstrap() {
     // Global validation pipe — rejects malformed payloads with HTTP 400
     app.useGlobalPipes(
       new ValidationPipe({
-        whitelist: true,          // Strip unknown properties
+        whitelist: true, // Strip unknown properties
         forbidNonWhitelisted: false, // Don't throw on extra fields from inference service
-        transform: true,          // Auto-transform payloads to DTO types
+        transform: true, // Auto-transform payloads to DTO types
         transformOptions: { enableImplicitConversion: true },
       }),
     );

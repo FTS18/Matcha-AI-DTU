@@ -1,3 +1,13 @@
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy")
+
+# Load .env file BEFORE importing anything that reads env vars
+from pathlib import Path
+from dotenv import load_dotenv
+_env_path = Path(__file__).resolve().parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path, override=True)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn

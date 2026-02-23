@@ -13,7 +13,9 @@ import { JwtStrategy } from './jwt.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'matcha-super-secret-key-change-me',
+        secret:
+          config.get<string>('JWT_SECRET') ||
+          'matcha-super-secret-key-change-me',
         signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Body,
@@ -19,12 +20,25 @@ import { Throttle } from '@nestjs/throttler';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { MatchesService } from './matches.service';
-import type { Match } from "@matcha/database";
+import type { Match } from '@matcha/database';
+import type { AnalysisPayload } from '@matcha/shared';
 import 'multer';
+
+interface AuthRequestOptional extends Express.Request {
+  user?: {
+    userId: string;
+  };
+}
+
+interface AuthRequestRequired extends Express.Request {
+  user: {
+    userId: string;
+  };
+}
 
 @Controller('matches')
 export class MatchesController {
-  constructor(private readonly matchesService: MatchesService) { }
+  constructor(private readonly matchesService: MatchesService) {}
 
   // Stricter rate limit on upload — 5 uploads per minute to protect disk + inference queue
   @UseGuards(JwtAuthGuard)
@@ -35,7 +49,8 @@ export class MatchesController {
       storage: diskStorage({
         destination: join(process.cwd(), '..', '..', 'uploads'),
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -44,7 +59,10 @@ export class MatchesController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: any): Promise<Match> {
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthRequestRequired,
+  ): Promise<Match> {
     if (!file) throw new BadRequestException('No file provided');
     return this.matchesService.create(file, req.user.userId);
   }
@@ -54,7 +72,7 @@ export class MatchesController {
   @Post('youtube')
   async uploadYoutube(
     @Body() body: { url: string; start_time?: number; end_time?: number },
-    @Req() req: any
+    @Req() req: AuthRequestRequired,
   ): Promise<Match> {
     if (!body || !body.url) {
       throw new BadRequestException('YouTube URL is required');
@@ -62,8 +80,13 @@ export class MatchesController {
     // Validate URL format
     try {
       const url = new URL(body.url);
-      if (!url.hostname.includes('youtube.com') && !url.hostname.includes('youtu.be')) {
-        throw new BadRequestException('URL must be a YouTube link (youtube.com or youtu.be)');
+      if (
+        !url.hostname.includes('youtube.com') &&
+        !url.hostname.includes('youtu.be')
+      ) {
+        throw new BadRequestException(
+          'URL must be a YouTube link (youtube.com or youtu.be)',
+        );
       }
     } catch (e) {
       if (e instanceof BadRequestException) throw e;
@@ -76,24 +99,38 @@ export class MatchesController {
     if (body.end_time !== undefined && body.end_time <= 0) {
       throw new BadRequestException('end_time must be > 0');
     }
-    if (body.start_time !== undefined && body.end_time !== undefined && body.start_time >= body.end_time) {
+    if (
+      body.start_time !== undefined &&
+      body.end_time !== undefined &&
+      body.start_time >= body.end_time
+    ) {
       throw new BadRequestException('start_time must be less than end_time');
     }
     if (body.end_time !== undefined && body.end_time > 10800) {
-      throw new BadRequestException('end_time cannot exceed 3 hours (10800 seconds)');
+      throw new BadRequestException(
+        'end_time cannot exceed 3 hours (10800 seconds)',
+      );
     }
-    return this.matchesService.createFromYoutube(body.url, req.user.userId, body.start_time, body.end_time);
+    return this.matchesService.createFromYoutube(
+      body.url,
+      req.user.userId,
+      body.start_time,
+      body.end_time,
+    );
   }
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get()
-  async findAll(@Req() req: any): Promise<Match[]> {
+  async findAll(@Req() req: AuthRequestOptional): Promise<Match[]> {
     return this.matchesService.findAll(req.user?.userId);
   }
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: any): Promise<Match> {
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: AuthRequestOptional,
+  ): Promise<Match> {
     const match = await this.matchesService.findOne(id, req.user?.userId);
     if (!match) throw new NotFoundException(`Match ${id} not found`);
     return match;
@@ -111,27 +148,75 @@ export class MatchesController {
   }
 
   @Post(':id/live-event')
-  async addLiveEvent(@Param('id') id: string, @Body() body: object) {
+  addLiveEvent(@Param('id') id: string, @Body() body: object) {
     return this.matchesService.addLiveEvent(id, body);
   }
 
   @Post(':id/complete')
-  async completeMatch(@Param('id') id: string, @Body() body: object) {
+  async completeMatch(@Param('id') id: string, @Body() body: AnalysisPayload) {
     if (!body) throw new BadRequestException('Payload required');
-    return this.matchesService.completeMatch(id, body as any);
+    return this.matchesService.completeMatch(id, body);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/reanalyze')
-  async reanalyzeMatch(@Param('id') id: string, @Req() req: any): Promise<{ ok: boolean }> {
-    const result = await this.matchesService.reanalyzeMatch(id, req.user.userId);
+  async reanalyzeMatch(
+    @Param('id') id: string,
+    @Req() req: AuthRequestRequired,
+  ): Promise<{ ok: boolean }> {
+    const result = await this.matchesService.reanalyzeMatch(
+      id,
+      req.user.userId,
+    );
     if (!result.ok) throw new NotFoundException(`Match ${id} not found`);
     return result;
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async deleteMatch(@Param('id') id: string, @Req() req: any): Promise<{ ok: boolean }> {
+  async deleteMatch(
+    @Param('id') id: string,
+    @Req() req: AuthRequestRequired,
+  ): Promise<{ ok: boolean }> {
     return this.matchesService.deleteMatch(id, req.user.userId);
+  }
+
+  // ── Highlight-level endpoints ──────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':matchId/highlights/:highlightId')
+  async updateHighlight(
+    @Param('matchId') matchId: string,
+    @Param('highlightId') highlightId: string,
+    @Body()
+    body: {
+      startTime?: number;
+      endTime?: number;
+      eventType?: string;
+      score?: number;
+      commentary?: string;
+    },
+    @Req() req: AuthRequestRequired,
+  ) {
+    return this.matchesService.updateHighlight(
+      matchId,
+      highlightId,
+      body,
+      req.user.userId,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':matchId/highlights/:highlightId')
+  async deleteHighlight(
+    @Param('matchId') matchId: string,
+    @Param('highlightId') highlightId: string,
+    @Req() req: AuthRequestRequired,
+  ): Promise<{ ok: boolean }> {
+    return this.matchesService.deleteHighlight(
+      matchId,
+      highlightId,
+      req.user.userId,
+    );
   }
 }

@@ -8,144 +8,89 @@ import numpy as np
 
 from app.core.tts import tts_generate
 
+try:
+    from app.core.soccer_analysis import process_clip_frames as _sa_process, is_available as _sa_available
+except ImportError:
+    _sa_process = None  # type: ignore
+    _sa_available = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
-# ── Goal celebration overlay asset ──────────────────────────────────────────
-# Path to the green-screen goal animation video.
-# Resolved relative to the workspace root (two levels up from this file).
-_THIS_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = _THIS_DIR.parents[2]          # …/Matcha-AI-DTU
-GOAL_OVERLAY_PATH = str(_PROJECT_ROOT / "uploads" / "Goal_1.mp4")
 
-
-def remove_greenscreen(frame: np.ndarray,
-                       lower_green: np.ndarray = np.array([35, 80, 80]),
-                       upper_green: np.ndarray = np.array([85, 255, 255])) -> tuple:
+def _annotate_clip_with_soccer_analysis(
+    clip_path: str, output_dir: str, match_id: str, clip_idx: int
+) -> str:
     """
-    Remove green-screen from a BGR frame.
-    Returns (rgb_frame, alpha_mask) where alpha_mask is 0-255 single-channel.
+    Read a raw video clip, run the soccer-analysis overlay pipeline on its
+    frames (player ellipses, speed/distance, ball control %), then write the
+    annotated frames back to a new file.  Returns the path to the annotated
+    clip (or the original clip path on failure).
     """
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    green_mask = cv2.inRange(hsv, lower_green, upper_green)
-    # Invert: foreground = non-green
-    alpha = cv2.bitwise_not(green_mask)
-    # Soften edges with a small blur to avoid harsh outlines
-    alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
-    return frame, alpha
+    try:
+        cap = cv2.VideoCapture(clip_path)
+        if not cap.isOpened():
+            return clip_path
 
+        fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-def overlay_goal_animation(clip_path: str, output_path: str,
-                           overlay_video: str = GOAL_OVERLAY_PATH,
-                           position: str = "center",
-                           scale: float = 0.40) -> bool:
-    """
-    Composite a green-screen goal animation on top of an existing highlight clip.
+        frames = []
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            frames.append(frame)
+        cap.release()
 
-    Parameters
-    ----------
-    clip_path   : path to the base highlight clip (mp4)
-    output_path : where to write the composited clip
-    overlay_video: path to the goal animation with green background
-    position    : "center" | "top-right" | "bottom-center"
-    scale       : overlay size relative to clip width (0.0-1.0)
+        if not frames:
+            return clip_path
 
-    Returns True on success.
-    """
-    if not os.path.exists(overlay_video):
-        logger.warning(f"Goal overlay not found at {overlay_video} – skipping")
-        return False
+        logger.info(
+            f"Soccer analysis: annotating clip {clip_idx} "
+            f"({len(frames)} frames, {w}x{h} @ {fps:.1f} fps)"
+        )
+        annotated = _sa_process(frames, fps=fps)
 
-    base_cap = cv2.VideoCapture(clip_path)
-    ovl_cap  = cv2.VideoCapture(overlay_video)
+        if annotated is None or len(annotated) == 0:
+            return clip_path
 
-    if not base_cap.isOpened() or not ovl_cap.isOpened():
-        logger.error("Failed to open base or overlay video")
-        return False
+        annotated_path = os.path.join(
+            output_dir, f"sa_v_{match_id}_{clip_idx}.mp4"
+        )
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        writer = cv2.VideoWriter(annotated_path, fourcc, fps, (w, h))
+        for f in annotated:
+            if f.shape[1] != w or f.shape[0] != h:
+                f = cv2.resize(f, (w, h))
+            writer.write(f)
+        writer.release()
 
-    fps    = base_cap.get(cv2.CAP_PROP_FPS) or 30.0
-    bw     = int(base_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    bh     = int(base_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(output_path, fourcc, fps, (bw, bh))
+        # Re-encode to H.264 so ffmpeg can concat/xfade it reliably
+        h264_path = os.path.join(
+            output_dir, f"sa_h264_{match_id}_{clip_idx}.mp4"
+        )
+        re_cmd = [
+            "ffmpeg", "-y", "-i", annotated_path,
+            "-c:v", "libx264", "-preset", "ultrafast", "-an", h264_path,
+        ]
+        if subprocess.run(re_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
+            # Clean up the intermediate mp4v file
+            if os.path.exists(annotated_path):
+                os.remove(annotated_path)
+            # Also clean up the original raw clip since it's been replaced
+            if os.path.exists(clip_path) and clip_path != h264_path:
+                os.remove(clip_path)
+            return h264_path
+        else:
+            # mp4v fallback
+            if os.path.exists(clip_path) and clip_path != annotated_path:
+                os.remove(clip_path)
+            return annotated_path
 
-    ovl_total = int(ovl_cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    ovl_fps   = ovl_cap.get(cv2.CAP_PROP_FPS) or 30.0
-    ovl_dur   = ovl_total / ovl_fps if ovl_fps else 0
-
-    # Pre-calculate overlay dimensions
-    ow = int(bw * scale)
-    # We'll compute oh per-frame to preserve aspect ratio
-
-    frame_idx = 0
-    while True:
-        ret, base_frame = base_cap.read()
-        if not ret:
-            break
-
-        # Read overlay frame (loop if overlay is shorter)
-        ret_o, ovl_frame = ovl_cap.read()
-        if not ret_o:
-            # If overlay ended, just write base frames as-is
-            writer.write(base_frame)
-            frame_idx += 1
-            continue
-
-        # ── Chroma-key removal ──────────────────────────────────────────
-        ovl_bgr, alpha = remove_greenscreen(ovl_frame)
-
-        # Resize overlay to target width, keep aspect ratio
-        orig_h, orig_w = ovl_bgr.shape[:2]
-        oh = int(ow * orig_h / orig_w) if orig_w else ow
-        ovl_resized = cv2.resize(ovl_bgr, (ow, oh), interpolation=cv2.INTER_AREA)
-        alpha_resized = cv2.resize(alpha, (ow, oh), interpolation=cv2.INTER_AREA)
-
-        # ── Position calculation ────────────────────────────────────────
-        if position == "top-right":
-            x_off = bw - ow - 20
-            y_off = 20
-        elif position == "bottom-center":
-            x_off = (bw - ow) // 2
-            y_off = bh - oh - 20
-        else:  # center
-            x_off = (bw - ow) // 2
-            y_off = (bh - oh) // 2
-
-        # Clamp to frame bounds
-        x_off = max(0, min(x_off, bw - ow))
-        y_off = max(0, min(y_off, bh - oh))
-
-        # ── Alpha-blend overlay onto base frame ─────────────────────────
-        roi = base_frame[y_off:y_off + oh, x_off:x_off + ow]
-        alpha_f = alpha_resized.astype(np.float32) / 255.0
-        if len(alpha_f.shape) == 2:
-            alpha_f = alpha_f[:, :, np.newaxis]  # (H, W, 1)
-
-        blended = (ovl_resized.astype(np.float32) * alpha_f +
-                   roi.astype(np.float32) * (1.0 - alpha_f))
-        base_frame[y_off:y_off + oh, x_off:x_off + ow] = blended.astype(np.uint8)
-
-        writer.write(base_frame)
-        frame_idx += 1
-
-    base_cap.release()
-    ovl_cap.release()
-    writer.release()
-
-    # Re-encode with libx264 so the result is compatible with later ffmpeg stages
-    re_encoded = output_path.replace(".mp4", "_h264.mp4")
-    cmd = [
-        "ffmpeg", "-y", "-i", output_path,
-        "-c:v", "libx264", "-preset", "ultrafast", "-an", re_encoded
-    ]
-    if subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
-        os.replace(re_encoded, output_path)
-    else:
-        logger.warning("H264 re-encode failed; keeping mp4v output")
-        if os.path.exists(re_encoded):
-            os.remove(re_encoded)
-
-    logger.info(f"Goal overlay composited → {output_path} ({frame_idx} frames)")
-    return True
+    except Exception as e:
+        logger.error(f"Soccer analysis annotation failed for clip {clip_idx}: {e}", exc_info=True)
+        return clip_path
 
 def generate_silent_audio(output_path: str, duration: float = 10.0) -> bool:
     try:
@@ -237,13 +182,11 @@ def create_highlight_reel(video_path: str, highlights: list, match_id: str, outp
             has_game_audio = True
 
         if subprocess.run(extract_v).returncode == 0:
-            # ── Goal Overlay: composite green-screen Goal_1.mp4 on GOAL clips ──
-            if event_type.upper() == "GOAL":
-                overlaid = os.path.join(output_dir, f"goal_ovl_{match_id}_{i}.mp4")
-                if overlay_goal_animation(v_clip, overlaid, GOAL_OVERLAY_PATH,
-                                          position="center", scale=0.45):
-                    os.replace(overlaid, v_clip)   # replace raw clip with composited version
-                    logger.info(f"Goal overlay applied to clip {i}")
+            # ── Soccer Analysis Overlay ──────────────────────────────────
+            # Annotate the raw clip with player tracking, speed/distance,
+            # team ellipses, ball marker & ball-control % before compositing.
+            if _sa_process and _sa_available and _sa_available():
+                v_clip = _annotate_clip_with_soccer_analysis(v_clip, output_dir, match_id, i)
 
             clip_details.append({
                 "video": v_clip, "tts": a_tts if has_tts else None, 
