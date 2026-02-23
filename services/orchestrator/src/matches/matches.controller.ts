@@ -11,6 +11,7 @@ import {
   BadRequestException,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
@@ -47,6 +48,30 @@ export class MatchesController {
   async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: any): Promise<Match> {
     if (!file) throw new BadRequestException('No file provided');
     return this.matchesService.create(file, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('yt-info')
+  async ytInfo(@Query('url') url: string) {
+    if (!url) throw new BadRequestException('url query param required');
+    try {
+      const parsed = new URL(url);
+      if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
+        throw new BadRequestException('Must be a YouTube URL');
+      }
+    } catch (e) {
+      if (e instanceof BadRequestException) throw e;
+      throw new BadRequestException('Invalid URL');
+    }
+    // Proxy to inference service
+    const inferenceUrl = process.env.INFERENCE_URL || 'http://localhost:8000';
+    try {
+      const resp = await fetch(`${inferenceUrl}/api/v1/yt-info?url=${encodeURIComponent(url)}`);
+      if (!resp.ok) throw new Error(await resp.text());
+      return resp.json();
+    } catch (e: any) {
+      throw new BadRequestException(`Could not fetch video info: ${e.message}`);
+    }
   }
 
   @UseGuards(JwtAuthGuard)
@@ -102,17 +127,22 @@ export class MatchesController {
   @Post(':id/progress')
   async updateProgress(
     @Param('id') id: string,
-    @Body() body: { progress: number },
+    @Body() body: { progress: number; stage?: string },
   ) {
     if (typeof body.progress !== 'number') {
       throw new BadRequestException('progress must be a number');
     }
-    return this.matchesService.updateProgress(id, body.progress);
+    return this.matchesService.updateProgress(id, body.progress, body.stage);
   }
 
   @Post(':id/live-event')
   async addLiveEvent(@Param('id') id: string, @Body() body: object) {
     return this.matchesService.addLiveEvent(id, body);
+  }
+
+  @Post(':id/tracking-update')
+  async trackingUpdate(@Param('id') id: string, @Body() body: { frames: object[] }) {
+    return this.matchesService.pushTrackingUpdate(id, body?.frames ?? []);
   }
 
   @Post(':id/complete')

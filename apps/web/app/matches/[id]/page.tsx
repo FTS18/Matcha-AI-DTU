@@ -25,7 +25,7 @@ import {
   getLiveIntensity, avgConfidence, maxScore, formatTime,
   timeAgo,
   EVENT_CONFIG as SHARED_EVENT_CONFIG, DEFAULT_EVENT_CONFIG,
-  STATUS_CONFIG,
+  STATUS_CONFIG, PIPELINE_STAGES,
 } from "@matcha/shared";
 import { createApiClient } from "@matcha/shared";
 
@@ -206,10 +206,22 @@ export default function MatchDetailPage() {
   const API_BASE = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:4000";
   const client = useMemo(() => createApiClient(`${API_BASE}`), []);
 
-  const { liveEvents, isConnected } = useMatchSocket({
+  const { liveEvents, isConnected, liveTrackingFrames, liveStage, liveProgress } = useMatchSocket({
     matchId: id as string,
     url: API_BASE,
   });
+
+  // Merge persisted trackingData with live frames streamed via WS during processing
+  const mergedTrackingData = useMemo(() => {
+    const persisted = match?.trackingData ?? [];
+    if (!liveTrackingFrames.length) return persisted.length ? persisted : null;
+    const combined = [...persisted, ...liveTrackingFrames];
+    // De-dup by time, keep sorted
+    const seen = new Set<number>();
+    return combined
+      .filter(f => { const k = Math.round(f.t * 10); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => a.t - b.t);
+  }, [match?.trackingData, liveTrackingFrames]);
 
   const getAssetUrl = useCallback((url: string | null) => client.getAssetUrl(url), [client]);
 
@@ -314,7 +326,7 @@ export default function MatchDetailPage() {
     0,
     Math.min(
       match.status === "COMPLETED" ? 100 : 99,
-      Math.round(match.progress ?? 0),
+      Math.round(liveProgress !== null && liveProgress > (match.progress ?? 0) ? liveProgress : (match.progress ?? 0)),
     ),
   );
 
@@ -415,8 +427,8 @@ export default function MatchDetailPage() {
         </div>
 
         {/* ══════ HIGHLIGHT REEL CTA — Always visible when reel exists ══════ */}
-        {match.status === "COMPLETED" && match.highlightReelUrl && (
-          <div className="relative overflow-hidden bg-gradient-to-r from-emerald-950/60 via-emerald-900/30 to-primary/10 border border-primary/30 p-5 sm:p-6 rounded-xl">
+        {match.status === "COMPLETED" && (match.highlightReelUrl || (match as any).highlightReelPortraitUrl) && (
+          <div className="relative overflow-hidden bg-linear-to-r from-emerald-950/60 via-emerald-900/30 to-primary/10 border border-primary/30 p-5 sm:p-6 rounded-xl">
             <div className="absolute -top-6 -right-6 size-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
             <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex items-center gap-3 flex-1">
@@ -427,42 +439,31 @@ export default function MatchDetailPage() {
                   <h3 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-wide">Highlight Reel Ready</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {match.highlights.length} best moments • AI commentary • Professional editing
+                    {(match as any).highlightReelPortraitUrl && ' • Portrait & Landscape'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <a
-                  href={getAssetUrl(match.highlightReelUrl)}
+                  href={getAssetUrl(
+                    isPortrait && (match as any).highlightReelPortraitUrl
+                      ? (match as any).highlightReelPortraitUrl
+                      : match.highlightReelUrl
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 text-sm font-bold text-background bg-primary hover:bg-primary/90 px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Play className="size-4" />
-                  {isPortrait ? 'Watch Reel' : 'Watch 16:9 Reel'}
+                  Watch Highlights
                 </a>
-                <button
-                  onClick={async () => {
-                    try {
-                      setReanalyzing(true);
-                      await client.generateReel(id, "9:16");
-                      setMatch(prev => prev ? { ...prev, status: "PROCESSING" } : prev);
-                    } catch { } finally {
-                      setReanalyzing(false);
-                    }
-                  }}
-                  disabled={reanalyzing}
-                  className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-primary border border-primary/40 hover:bg-primary/10 px-3 py-2.5 rounded-lg transition-all uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {reanalyzing ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
-                  {isPortrait ? 'Gen 9:16' : 'Gen 9:16 Vertical'}
-                </button>
               </div>
             </div>
           </div>
         )}
 
         {/* ══════ No reel yet — show generate prompt ══════ */}
-        {match.status === "COMPLETED" && !match.highlightReelUrl && match.highlights.length > 0 && (
+        {match.status === "COMPLETED" && !match.highlightReelUrl && !(match as any).highlightReelPortraitUrl && match.highlights.length > 0 && (
           <div className="bg-card border border-dashed border-primary/20 p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex items-center gap-3 flex-1">
               <Film className="size-5 text-muted-foreground/50" />
@@ -600,7 +601,7 @@ export default function MatchDetailPage() {
                   events={match.events}
                   highlights={match.highlights}
                   initialTeamColors={match.teamColors}
-                  trackingData={match.trackingData}
+                  trackingData={mergedTrackingData}
                   seekFnRef={videoSeekRef}
                   onTimeUpdate={handleTimeUpdate}
                 />
@@ -646,7 +647,7 @@ export default function MatchDetailPage() {
                   <div className="bg-blue-500/5 border border-blue-500/25 px-3 sm:px-4 py-3">
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <span className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-blue-300">
-                        {match.status === "UPLOADED" && processingProgress === 0 ? "Queued for analysis" : "Analysis progress"}
+                        {liveStage ? (PIPELINE_STAGES[liveStage] ?? liveStage) : (match.status === "UPLOADED" && processingProgress === 0 ? "Queued for analysis" : "Analysis progress")}
                       </span>
                       <span className="font-mono text-xs text-blue-200 tabular-nums">{processingProgress}%</span>
                     </div>
@@ -656,6 +657,11 @@ export default function MatchDetailPage() {
                         style={{ width: `${processingProgress}%` }}
                       />
                     </div>
+                    {liveStage && (
+                      <p className="font-mono text-[9px] text-blue-300/60 mt-1.5 uppercase tracking-widest animate-pulse">
+                        {PIPELINE_STAGES[liveStage] ?? liveStage}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -682,7 +688,7 @@ export default function MatchDetailPage() {
                 <div className="max-h-52 overflow-y-auto space-y-px">
                   {liveEvents.length === 0 && (
                     <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground/80">
-                      <Loader2 className="size-3.5 animate-spin" /> Scanning frames…
+                      <Loader2 className="size-3.5 animate-spin" /> {liveStage ? (PIPELINE_STAGES[liveStage] ?? liveStage) : "Scanning frames…"}
                     </div>
                   )}
                   {sortedLive.map((ev, i) => {
@@ -728,12 +734,16 @@ export default function MatchDetailPage() {
 
             {activeTab === "highlights" && (
               <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                {match.highlightReelUrl && (
+                {(match.highlightReelUrl || (match as any).highlightReelPortraitUrl) && (
                   <div className="mb-3 p-3 bg-primary/10 border border-primary/20 flex items-center gap-3">
                     <Film className="size-4 text-primary shrink-0" />
                     <span className="text-xs text-muted-foreground flex-1">Full reel available ↑ see above</span>
                     <a
-                      href={getAssetUrl(match.highlightReelUrl)}
+                      href={getAssetUrl(
+                        isPortrait && (match as any).highlightReelPortraitUrl
+                          ? (match as any).highlightReelPortraitUrl
+                          : match.highlightReelUrl
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 px-2 py-1 transition-all uppercase tracking-wide"

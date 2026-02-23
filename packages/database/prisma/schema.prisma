@@ -18,8 +18,9 @@ model Match {
   trackingData     Json?
   teamColors       Json?
   progress         Int            @default(0)
-  highlightReelUrl String?
-  heatmapUrl       String?
+  highlightReelUrl         String?
+  highlightReelPortraitUrl String?
+  heatmapUrl               String?
   thumbnailUrl     String?
   topSpeedKmh      Float?
   userId           String?

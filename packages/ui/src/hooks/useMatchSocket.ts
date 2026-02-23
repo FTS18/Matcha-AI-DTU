@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { io, Socket } from "socket.io-client";
-import { MatchEvent } from "@matcha/shared";
+import { MatchEvent, TrackFrame } from "@matcha/shared";
 
 interface UseMatchSocketOptions {
   matchId: string;
@@ -14,6 +14,8 @@ export function useMatchSocket({ matchId, url, enabled = true }: UseMatchSocketO
   const [liveEvents, setLiveEvents] = useState<MatchEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [liveProgress, setLiveProgress] = useState<number | null>(null);
+  const [liveStage, setLiveStage] = useState<string>("");
+  const [liveTrackingFrames, setLiveTrackingFrames] = useState<TrackFrame[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -48,14 +50,25 @@ export function useMatchSocket({ matchId, url, enabled = true }: UseMatchSocketO
       });
     });
 
-    socket.on("progress", (payload: { matchId: string; progress: number }) => {
+    socket.on("progress", (payload: { matchId: string; progress: number; stage?: string }) => {
       if (payload.matchId !== matchId) return;
       setLiveProgress(payload.progress);
+      if (payload.stage) setLiveStage(payload.stage);
     });
 
     socket.on("complete", (payload: { matchId: string }) => {
       if (payload.matchId !== matchId) return;
       setLiveProgress(100);
+    });
+
+    // Real-time tracking overlay frames streamed from inference
+    socket.on("trackingUpdate", (payload: { matchId: string; frames: TrackFrame[] }) => {
+      if (payload.matchId !== matchId || !payload.frames?.length) return;
+      setLiveTrackingFrames(prev => {
+        // Merge new frames in, keeping sorted by time, capped at 10000 frames to avoid memory blowup
+        const merged = [...prev, ...payload.frames].sort((a, b) => a.t - b.t);
+        return merged.length > 10000 ? merged.slice(merged.length - 10000) : merged;
+      });
     });
 
     return () => {
@@ -67,7 +80,9 @@ export function useMatchSocket({ matchId, url, enabled = true }: UseMatchSocketO
   return {
     liveEvents,
     liveProgress,
+    liveStage,
     isConnected,
+    liveTrackingFrames,
     socket: socketRef.current,
   };
 }

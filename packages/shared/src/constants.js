@@ -19,4 +19,27 @@ export var WsEvents;
     WsEvents["MATCH_EVENT"] = "matchEvent";
     WsEvents["PROGRESS"] = "progress";
     WsEvents["COMPLETE"] = "complete";
+    WsEvents["TRACKING_UPDATE"] = "trackingUpdate";
 })(WsEvents || (WsEvents = {}));
+
+/** Pipeline stage labels */
+export const PIPELINE_STAGES = {
+    queued: "Queued for analysis",
+    downloading: "Downloading video",
+    compressing: "Compressing video",
+    scanning: "Scanning frames",
+    tracking: "Tracking players & ball",
+    motion: "Analysing motion",
+    events: "Detecting events",
+    cv_physics: "CV physics analysis",
+    scoring: "Scoring events",
+    commentary: "Generating AI commentary",
+    highlights: "Selecting highlights",
+    reel: "Generating highlight reel",
+    heatmap: "Generating heatmap & analytics",
+    tactics: "Tactical analysis",
+    summary: "Generating AI summary",
+    thumbnail: "Generating thumbnail",
+    saving: "Saving results",
+    done: "Analysis complete",
+};

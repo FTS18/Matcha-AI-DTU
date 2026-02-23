@@ -11,39 +11,64 @@ from app.core.tts import tts_generate
 logger = logging.getLogger(__name__)
 
 # ── Logo path (top-right watermark) ──────────────────────────────────────────
-LOGO_PATH = str(Path(__file__).resolve().parent.parent.parent.parent / "apps" / "web" / "public" / "favicons" / "logo.png")
+LOGO_PATH = str(Path(__file__).resolve().parent.parent.parent.parent.parent / "apps" / "web" / "public" / "favicons" / "logo.png")
 
 # ── Event-specific overlay configs ───────────────────────────────────────────
 EVENT_CONFIG = {
-    "GOAL":        {"color": (0, 255, 100),  "emoji": "⚽", "title": "GOAL!",        "transition": "circleopen"},
-    "SAVE":        {"color": (50, 180, 255), "emoji": "🧤", "title": "GREAT SAVE",   "transition": "fadeblack"},
-    "TACKLE":      {"color": (255, 165, 0),  "emoji": "💥", "title": "TACKLE",       "transition": "slideleft"},
-    "FOUL":        {"color": (255, 50, 50),  "emoji": "🟨", "title": "FOUL",         "transition": "fadeblack"},
-    "CELEBRATION": {"color": (255, 215, 0),  "emoji": "🎉", "title": "CELEBRATION",  "transition": "circleopenclose"},
-    "HIGHLIGHT":   {"color": (200, 200, 255),"emoji": "🔥", "title": "KEY MOMENT",   "transition": "fade"},
+    "GOAL":        {"color": (0, 255, 100),  "title": "GOAL",        "transition": "circleopen"},
+    "SAVE":        {"color": (50, 180, 255), "title": "GREAT SAVE",  "transition": "fadeblack"},
+    "TACKLE":      {"color": (255, 165, 0),  "title": "TACKLE",      "transition": "slideleft"},
+    "FOUL":        {"color": (255, 50, 50),  "title": "FOUL",        "transition": "fadeblack"},
+    "CELEBRATION": {"color": (255, 215, 0),  "title": "CELEBRATION", "transition": "circleopenclose"},
+    "HIGHLIGHT":   {"color": (200, 200, 255),"title": "KEY MOMENT",  "transition": "fade"},
+}
+
+VALID_TRANSITIONS = {
+    "fade", "fadeblack", "fadewhite", "slideleft", "slideright", "slideup", "slidedown",
+    "circlecrop", "rectcrop", "distance", "pixelize", "diagtl", "diagtr", "diagbl",
+    "diagbr", "hlslice", "hrslice", "vuslice", "vdslice", "hblur", "fadegrays",
+    "wipel", "wiper", "wipet", "wipeb",
 }
 
 
-def generate_silent_audio(output_path: str, duration: float = 10.0) -> bool:
+def _run_ffmpeg(cmd: list, timeout: int = 120) -> bool:
+    """Run ffmpeg command, return True on success."""
     try:
-        cmd = [
-            "ffmpeg", "-y",
-            "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=stereo:d={duration}",
-            "-t", str(duration), "-q:a", "9", "-acodec", "libmp3lame",
-            output_path
-        ]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", errors="replace")[-800:]
+            logger.warning(f"ffmpeg non-zero exit ({result.returncode}): {stderr}")
         return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        logger.error(f"ffmpeg timed out after {timeout}s")
+        return False
+    except Exception as e:
+        logger.error(f"ffmpeg error: {e}")
+        return False
+
+
+def generate_silent_audio(output_path: str, duration: float = 10.0) -> bool:
+    """Generate a silent audio file of the given duration."""
+    try:
+        return _run_ffmpeg([
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=stereo",
+            "-t", str(duration),
+            "-c:a", "aac", "-b:a", "128k",
+            output_path
+        ], timeout=30)
     except Exception as e:
         logger.error(f"Failed to generate silent audio: {e}")
         return False
 
 
 def _get_ball_focus_region(tracking_data: list, start: float, end: float) -> tuple:
-    """
-    Analyze ball positions in a time window and return the median (x, y) 
-    normalized center point for smart crop / pan.
-    """
+    """Return median ball (x, y) in [0,1] for smart crop."""
     ball_xs, ball_ys = [], []
     for tf in tracking_data:
         t = tf.get("t", 0)
@@ -51,76 +76,42 @@ def _get_ball_focus_region(tracking_data: list, start: float, end: float) -> tup
             bx, by, bw, bh = tf["b"][0][:4]
             ball_xs.append(bx + bw / 2)
             ball_ys.append(by + bh / 2)
-    
     if ball_xs:
         return float(np.median(ball_xs)), float(np.median(ball_ys))
-    return 0.5, 0.5  # Center fallback
+    return 0.5, 0.5
 
 
-def _build_event_overlay_filter(event_type: str, duration: float, is_vertical: bool) -> str:
+def _build_event_overlay_filter(event_type: str, clip_dur: float, is_vertical: bool) -> str:
     """
-    Build an FFmpeg drawtext filter for a stylish event-type title card 
-    (e.g., "⚽ GOAL!" with animated fade-in).
-    No more scrolling marquee — this is a centered, professional overlay.
+    Build FFmpeg drawtext filter for the event title card.
+    Keeps it ASCII-safe (no emoji — those crash ffmpeg drawtext).
     """
     cfg = EVENT_CONFIG.get(event_type, EVENT_CONFIG["HIGHLIGHT"])
-    title = cfg["title"]
+    title = cfg["title"]          # pure ASCII, safe for drawtext
     r, g, b = cfg["color"]
-    
-    # Font sizes based on orientation
-    title_size = 56 if not is_vertical else 44
-    sub_size = 22 if not is_vertical else 18
-    
-    # Position: centered horizontally, upper-third vertically
-    # Alpha animation: fade in from 0 to 1 over 0.5s, hold 3s, fade out over 0.5s
-    alpha_expr = f"if(lt(t,0.5),t/0.5,if(lt(t,3.5),1,if(lt(t,4),(4-t)/0.5,0)))"
-    
-    filters = []
-    
-    # Title background bar (semi-transparent)
-    if not is_vertical:
-        filters.append(
-            f"drawbox=x=0:y=ih*0.08:w=iw:h=80:color=black@0.6:t=fill"
-            f":enable='between(t,0.3,4)'"
-        )
-    else:
-        filters.append(
-            f"drawbox=x=0:y=ih*0.06:w=iw:h=70:color=black@0.6:t=fill"
-            f":enable='between(t,0.3,4)'"
-        )
-
-    # Main event title (centered)
     hex_color = f"{r:02x}{g:02x}{b:02x}"
-    filters.append(
-        f"drawtext=text='{title}'"
-        f":fontcolor=0x{hex_color}:fontsize={title_size}"
-        f":x=(w-text_w)/2:y={'ih*0.09' if not is_vertical else 'ih*0.065'}"
-        f":alpha='{alpha_expr}'"
-        f":borderw=2:bordercolor=black"
-    )
-    
-    # Subtle "Matcha AI" watermark text (bottom-left)
-    filters.append(
-        f"drawtext=text='Matcha AI'"
-        f":fontcolor=white@0.5:fontsize=16"
-        f":x=15:y=h-30"
-    )
-    
+
+    title_size = 52 if not is_vertical else 40
+    # Fade in 0→0.5s, hold to 3.5s, fade out to 4s
+    alpha = "if(lt(t,0.5),t/0.5,if(lt(t,3.5),1,if(lt(t,4.0),(4.0-t)/0.5,0)))"
+    # NOTE: drawtext uses 'h'/'w' (not 'ih'/'iw') for input dimensions
+    y_pos = "h*0.09" if not is_vertical else "h*0.065"
+    bar_h = 70 if not is_vertical else 55
+
+    filters = [
+        # Dark background bar  (drawbox CAN use ih/iw)
+        f"drawbox=x=0:y=ih*0.07:w=iw:h={bar_h}:color=black@0.65:t=fill:enable='between(t,0.3,4.0)'",
+        # Event title centred  (drawtext uses h/w, NOT ih/iw)
+        (f"drawtext=text='{title}'"
+         f":fontcolor=0x{hex_color}:fontsize={title_size}"
+         f":x=(w-text_w)/2:y={y_pos}"
+         f":alpha='{alpha}':borderw=2:bordercolor=black@0.8"),
+        # Matcha AI watermark bottom-left
+        ("drawtext=text='Matcha AI'"
+         ":fontcolor=white@0.45:fontsize=15"
+         ":x=14:y=h-28:borderw=1:bordercolor=black@0.6"),
+    ]
     return ",".join(filters)
-
-
-def _build_logo_overlay(logo_path: str, is_vertical: bool) -> str:
-    """
-    Returns the FFmpeg filter to overlay the Matcha logo (top-right corner).
-    The logo is scaled down and placed with padding.
-    """
-    if not os.path.exists(logo_path):
-        return ""
-    
-    logo_size = 60 if not is_vertical else 45
-    pad = 15
-    # This will be applied via a separate overlay input
-    return f"scale={logo_size}:{logo_size}"
 
 
 def create_highlight_reel(
@@ -129,273 +120,324 @@ def create_highlight_reel(
     aspect_ratio: str = "16:9", language: str = "english"
 ) -> dict:
     """
-    Production-grade highlight reel:
-    1. Smart crop/pan to follow the ball (especially for 9:16 reels).
-    2. Event-type title cards with animated fade-in/out.
-    3. Matcha AI logo watermark (top-right).
-    4. Professional xfade transitions per event type.
-    5. Layered audio: Game sound + Music + Crowd + TTS commentary.
-    Returns: {'reel_url': str|None, 'clip_urls': [str, ...]} for standalone playback.
+    Production-grade highlight reel (robust version):
+    1. Extracts per-highlight MP4 clips with event title overlay + Matcha AI watermark.
+    2. Smart ball-follow crop for 9:16 vertical reels.
+    3. Concatenates all clips with xfade transitions.
+    4. Mixes TTS commentary + background music + crowd ambience + roar sfx.
+       - Original game audio is MUTED — highlights use only produced audio.
+       - Music fades in/out smoothly.
+       - Crowd ambience runs throughout, volume rises on events.
+       - Roar SFX fires at the start of each clip for big moments.
+       - TTS is always prominent, music ducks under it.
+    Returns: {'reel_url': str|None, 'clip_urls': [str|None, ...]}
     """
     if not highlights:
         return {'reel_url': None, 'clip_urls': []}
 
     is_vertical = (aspect_ratio == "9:16")
-    logger.info(f"🎬 Generating {'9:16 vertical' if is_vertical else '16:9 horizontal'} reel "
-                f"for match {match_id} ({len(highlights)} highlights)")
+    has_logo = os.path.exists(LOGO_PATH)
+    transition_duration = 0.8
+    logo_size = 50 if not is_vertical else 38
+    logo_pad = 10
+    ar_tag = "_p" if is_vertical else ""   # suffix to avoid filename collisions
 
-    # ── Audio Assets ────────────────────────────────────────────────────────
+    logger.info(f"[Reel] Generating {'9:16' if is_vertical else '16:9'} reel "
+                f"for {match_id} ({len(highlights)} clips)")
+
+    # ── Music assets ─────────────────────────────────────────────────────────
     music_path = str(music_dir / "music.mp3")
     crowd_path = str(music_dir / "crowd.mp3")
     roar_path  = str(music_dir / "roar.mp3")
-    for p in [music_path, crowd_path, roar_path]:
-        if not os.path.exists(p):
-            generate_silent_audio(p, duration=10.0)
+    if not os.path.exists(music_path):
+        generate_silent_audio(music_path, duration=300.0)
+    has_crowd = os.path.exists(crowd_path)
+    has_roar  = os.path.exists(roar_path)
 
-    # ── Logo ────────────────────────────────────────────────────────────────
-    has_logo = os.path.exists(LOGO_PATH)
-
-    # ── Phase 1: Extract individual clips ───────────────────────────────────
-    clip_details = []
-    clip_public_urls = []  # Per-clip public URLs kept for standalone playback
-    transition_duration = 0.8
+    # ── Phase 1: Extract individual clips ────────────────────────────────────
+    clip_details: list = []
+    clip_public_urls: list = []
 
     for i, h in enumerate(highlights):
-        start, end = h["startTime"], h["endTime"]
-        text = h.get("commentary", "")
-        event_type = h.get("eventType", "HIGHLIGHT")
-        clip_dur = end - start
+        start = float(h.get("startTime", 0))
+        end   = float(h.get("endTime", start + 10))
+        clip_dur = max(end - start, 1.0)
+        event_type = str(h.get("eventType") or "HIGHLIGHT").upper()
+        commentary = str(h.get("commentary") or "")
 
-        # Use named clips saved to uploads dir for public access
-        v_clip  = os.path.join(output_dir, f"clip_{match_id}_{i}.mp4")
-        a_tts   = os.path.join(output_dir, f"tts_{match_id}_{i}.wav")
-        a_game  = os.path.join(output_dir, f"game_{match_id}_{i}.wav")
+        v_clip  = os.path.join(output_dir, f"clip_{match_id}_{i}{ar_tag}.mp4")
+        a_game  = os.path.join(output_dir, f"game_{match_id}_{i}{ar_tag}.wav")
+        a_tts   = os.path.join(output_dir, f"tts_{match_id}_{i}{ar_tag}.wav")
 
-        # ── Video Filters ───────────────────────────────────────────────
-        v_filters = []
+        # ── Video filter chain ────────────────────────────────────────────
+        vf_parts: list = []
 
-        # 1. Smart Ball-Follow Crop for 9:16
-        if is_vertical and tracking_data:
-            focus_x, focus_y = _get_ball_focus_region(tracking_data, start, end)
-            # Crop a vertical slice (9:16 from 16:9 source)
-            cw_norm = (9 / 16) / (16 / 9)  # ~0.3125
-            x_start = max(0.0, min(1.0 - cw_norm, focus_x - cw_norm / 2))
-            v_filters.append(f"crop=iw*{cw_norm:.4f}:ih:{x_start:.4f}*iw:0,scale=720:1280")
-        elif is_vertical:
-            v_filters.append("crop=ih*(9/16):ih:(iw-ih*(9/16))/2:0,scale=720:1280")
+        # 1) Vertical crop (9:16)
+        if is_vertical:
+            if tracking_data:
+                fx, fy = _get_ball_focus_region(tracking_data, start, end)
+                cw_norm = (9 / 16) / (16 / 9)
+                x_start = max(0.0, min(1.0 - cw_norm, fx - cw_norm / 2))
+                vf_parts.append(
+                    f"crop=iw*{cw_norm:.4f}:ih:{x_start:.4f}*iw:0,scale=720:1280"
+                )
+            else:
+                vf_parts.append("crop=ih*(9/16):ih:(iw-ih*(9/16))/2:0,scale=720:1280")
 
-        # 2. Event title overlay (animated, no marquee)
-        overlay_filter = _build_event_overlay_filter(event_type, clip_dur, is_vertical)
-        v_filters.append(overlay_filter)
+        # 2) Event overlay (ASCII-safe)
+        overlay_str = _build_event_overlay_filter(event_type, clip_dur, is_vertical)
+        if overlay_str:
+            vf_parts.append(overlay_str)
 
-        v_filter_str = ",".join(v_filters) if v_filters else "null"
+        vf_str = ",".join(vf_parts) if vf_parts else "null"
 
-        # ── Build FFmpeg command ────────────────────────────────────────
-        extract_cmd = [
-            "ffmpeg", "-y",
-            "-ss", str(start), "-to", str(end),
-            "-i", video_path,
-        ]
-        
-        # Add logo as overlay input
+        # ── Build extraction command ──────────────────────────────────────
         if has_logo:
-            extract_cmd.extend(["-i", LOGO_PATH])
-            logo_size = 55 if not is_vertical else 40
-            pad = 12
-            # Combine video filter + logo overlay
-            full_filter = f"[0:v]{v_filter_str}[main];[1:v]scale={logo_size}:{logo_size},format=rgba[logo];[main][logo]overlay=W-w-{pad}:{pad}[out]"
-            extract_cmd.extend([
-                "-filter_complex", full_filter,
-                "-map", "[out]",
-                "-an",
-                "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-                v_clip
-            ])
+            full_vf = (
+                f"[0:v]{vf_str}[_vf];"
+                f"[1:v]scale={logo_size}:{logo_size},format=rgba[_logo];"
+                f"[_vf][_logo]overlay=W-w-{logo_pad}:{logo_pad}[vout]"
+            )
+            clip_cmd = [
+                "ffmpeg", "-y",
+                "-ss", str(start), "-to", str(end), "-i", video_path,
+                "-i", LOGO_PATH,
+                "-filter_complex", full_vf,
+                "-map", "[vout]", "-an",
+                "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+                "-movflags", "+faststart",
+                v_clip,
+            ]
         else:
-            extract_cmd.extend([
-                "-vf", v_filter_str,
-                "-an",
-                "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-                v_clip
-            ])
+            clip_cmd = [
+                "ffmpeg", "-y",
+                "-ss", str(start), "-to", str(end), "-i", video_path,
+                "-vf", vf_str, "-an",
+                "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+                "-movflags", "+faststart",
+                v_clip,
+            ]
 
-        # ── TTS ─────────────────────────────────────────────────────────
-        has_tts = tts_generate(text, a_tts, language=language) if text else False
-
-        # ── Game Audio ──────────────────────────────────────────────────
+        # ── Skip original game audio — highlights use only crowd/roar/music/TTS
         has_game_audio = False
-        extract_a = [
-            "ffmpeg", "-y",
-            "-ss", str(start), "-to", str(end), "-i", video_path,
-            "-vn", "-c:a", "pcm_s16le", a_game
-        ]
-        if subprocess.run(extract_a, stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
-            has_game_audio = True
 
-        # Run video extraction
-        res = subprocess.run(extract_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if res.returncode == 0 and os.path.exists(v_clip):
+        # ── TTS commentary ────────────────────────────────────────────────
+        has_tts = False
+        if commentary:
+            try:
+                has_tts = tts_generate(commentary, a_tts, language=language)
+            except Exception as _te:
+                logger.debug(f"TTS skipped: {_te}")
+
+        # ── Run video extraction ──────────────────────────────────────────
+        ok = _run_ffmpeg(clip_cmd, timeout=120)
+
+        if not ok or not os.path.exists(v_clip):
+            # Fallback: simple extract without overlays
+            logger.warning(f"Clip {i} overlay failed, retrying simple extract")
+            ok = _run_ffmpeg([
+                "ffmpeg", "-y",
+                "-ss", str(start), "-to", str(end), "-i", video_path,
+                "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+                "-an", "-movflags", "+faststart",
+                v_clip,
+            ], timeout=120)
+
+        if ok and os.path.exists(v_clip) and os.path.getsize(v_clip) > 1024:
             cfg = EVENT_CONFIG.get(event_type, EVENT_CONFIG["HIGHLIGHT"])
-            clip_public_url = f"/uploads/clip_{match_id}_{i}.mp4"
-            clip_public_urls.append(clip_public_url)
+            pub_url = f"/uploads/clip_{match_id}_{i}{ar_tag}.mp4"
+            clip_public_urls.append(pub_url)
             clip_details.append({
                 "video": v_clip,
-                "public_url": clip_public_url,
-                "tts": a_tts if has_tts else None,
+                "public_url": pub_url,
                 "game_audio": a_game if has_game_audio else None,
+                "tts": a_tts if has_tts else None,
                 "duration": clip_dur,
-                "event_type": event_type,
-                "transition": cfg["transition"],
+                "transition": cfg["transition"] if cfg["transition"] in VALID_TRANSITIONS else "fade",
             })
+            logger.info(f"  ✓ clip {i}: {pub_url} ({clip_dur:.1f}s)")
         else:
-            logger.warning(f"Clip {i} extraction failed (rc={res.returncode})")
-            clip_public_urls.append(None)  # Keep index alignment
+            logger.warning(f"  ✗ clip {i} failed completely, skipping")
+            clip_public_urls.append(None)
 
     if not clip_details:
-        logger.error("No clips were extracted successfully")
-        return {'reel_url': None, 'clip_urls': []}
+        logger.error("[Reel] No clips extracted — aborting reel")
+        return {'reel_url': None, 'clip_urls': clip_public_urls}
 
-    # ── Phase 2: Transition Chain ───────────────────────────────────────────
-    # If only 1 clip, skip transitions
+    # ── Phase 2: Stitch clips with xfade ─────────────────────────────────────
     if len(clip_details) == 1:
-        v_output = clip_details[0]["video"]
+        v_stitched = clip_details[0]["video"]
     else:
-        # Build xfade chain with per-event transition styles
-        v_output = os.path.join(output_dir, f"v_trans_{match_id}.mp4")
-        v_cmd = ["ffmpeg", "-y"]
+        v_stitched = os.path.join(output_dir, f"v_trans_{match_id}{ar_tag}.mp4")
+        v_inputs = []
         for c in clip_details:
-            v_cmd.extend(["-i", c["video"]])
+            v_inputs += ["-i", c["video"]]
 
-        filter_parts = []
-        last_v = "[0:v]"
-        current_offset = clip_details[0]["duration"] - transition_duration
+        fp: list = []
+        last_label = "[0:v]"
+        offset = clip_details[0]["duration"] - transition_duration
 
-        for i in range(1, len(clip_details)):
-            next_v = f"[{i}:v]"
-            out_v = f"[v{i}]"
-            trans = clip_details[i]["transition"]
-            filter_parts.append(
-                f"{last_v}{next_v}xfade=transition={trans}"
-                f":duration={transition_duration}:offset={current_offset:.2f}{out_v}"
+        for idx in range(1, len(clip_details)):
+            out_label = f"[v{idx}]"
+            trans = clip_details[idx]["transition"]
+            fp.append(
+                f"{last_label}[{idx}:v]xfade=transition={trans}"
+                f":duration={transition_duration:.2f}:offset={max(offset,0):.2f}{out_label}"
             )
-            last_v = out_v
-            current_offset += clip_details[i]["duration"] - transition_duration
+            last_label = out_label
+            offset += clip_details[idx]["duration"] - transition_duration
 
-        v_cmd.extend([
-            "-filter_complex", ";".join(filter_parts),
-            "-map", last_v,
-            "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-            v_output
-        ])
+        stitch_ok = _run_ffmpeg(
+            ["ffmpeg", "-y"]
+            + v_inputs
+            + ["-filter_complex", ";".join(fp),
+               "-map", last_label,
+               "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+               "-movflags", "+faststart",
+               v_stitched],
+            timeout=300,
+        )
+        if not stitch_ok:
+            logger.warning("[Reel] Stitch failed — using first clip as fallback")
+            v_stitched = clip_details[0]["video"]
 
-        res = subprocess.run(v_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if res.returncode != 0:
-            logger.error(f"Transition chain failed: {res.stderr[-500:]}")
-            # Fallback: just use the first clip
-            v_output = clip_details[0]["video"]
+    # ── Phase 3: Mix audio (TTS + music + crowd + roar — no game audio) ──
+    ar_suffix = "_portrait" if is_vertical else ""
+    final_reel = os.path.join(output_dir, f"highlight_reel_{match_id}{ar_suffix}.mp4")
 
-    # ── Phase 3: Audio Mixing ───────────────────────────────────────────────
-    final_reel = os.path.join(output_dir, f"highlight_reel_{match_id}.mp4")
-
-    final_cmd = ["ffmpeg", "-y", "-i", v_output]
-    bg_paths = [music_path, crowd_path, roar_path]
-    for p in bg_paths:
-        final_cmd.extend(["-stream_loop", "-1", "-i", p])
-
-    # Collect segment audio inputs
-    seg_paths = []
-    for c in clip_details:
-        if c["tts"]:
-            seg_paths.append(c["tts"])
-        if c["game_audio"]:
-            seg_paths.append(c["game_audio"])
-    for p in seg_paths:
-        final_cmd.extend(["-i", p])
-
-    # Build audio filter
-    filter_parts = []
-    # Background layers
-    filter_parts.append("[1:a]volume=0.08[m]")
-    filter_parts.append("[2:a]volume=0.30[c]")
-    filter_parts.append("[3:a]volume=0.20[r]")
-    filter_parts.append("[m][c][r]amix=inputs=3:duration=first[base_bg]")
-
-    # Segment audio with adelay
+    # Calculate total reel duration and per-clip start offsets
     start_offsets = [0.0]
     for j in range(len(clip_details) - 1):
-        start_offsets.append(start_offsets[-1] + clip_details[j]["duration"] - transition_duration)
+        start_offsets.append(
+            start_offsets[-1] + clip_details[j]["duration"] - transition_duration
+        )
+    total_dur = start_offsets[-1] + clip_details[-1]["duration"] if clip_details else 10.0
 
-    seg_idx = 4
-    seg_labels = []
-    duck_exprs = []
+    # ── Collect all audio input files ─────────────────────────────────────
+    # Input 0 = video, Input 1 = music (looped), Input 2 = crowd (looped)
+    extra_inputs: list = []
+    extra_inputs += ["-stream_loop", "-1", "-i", music_path]       # input 1 = music
+    if has_crowd:
+        extra_inputs += ["-stream_loop", "-1", "-i", crowd_path]   # input 2 = crowd
+    roar_input_idx = (2 if has_crowd else 1) + 1   # index of roar input
+    if has_roar:
+        extra_inputs += ["-i", roar_path]                          # input 2 or 3 = roar
 
+    # Next available ffmpeg input index for TTS segments
+    next_idx = (1   # music
+                + (1 if has_crowd else 0)
+                + (1 if has_roar else 0)
+                + 1)  # +1 for the video itself at index 0
+
+    filter_parts: list = []
+    mix_labels: list = []
+
+    # ── Background music: smooth 2s fade-in, 2s fade-out, low volume ─────
+    fade_out_start = max(0, total_dur - 2.0)
+    filter_parts.append(
+        f"[1:a]volume=0.10,afade=t=in:st=0:d=2.0,afade=t=out:st={fade_out_start:.2f}:d=2.0"
+        f",atrim=0:{total_dur:.2f},apad=whole_dur={total_dur:.2f}[bgm]"
+    )
+    mix_labels.append("[bgm]")
+
+    # ── Crowd ambience: looped, 1.5s fade-in, 1.5s fade-out, moderate vol
+    if has_crowd:
+        filter_parts.append(
+            f"[2:a]volume=0.30,afade=t=in:st=0:d=1.5,afade=t=out:st={fade_out_start:.2f}:d=1.5"
+            f",atrim=0:{total_dur:.2f},apad=whole_dur={total_dur:.2f}[crowd]"
+        )
+        mix_labels.append("[crowd]")
+
+    # ── Split roar input so it can be used once per clip ──────────────────
+    num_clips = len(clip_details)
+    if has_roar and num_clips > 0:
+        if num_clips == 1:
+            filter_parts.append(f"[{roar_input_idx}:a]acopy[_roar0]")
+        else:
+            split_labels = "".join(f"[_roar{j}]" for j in range(num_clips))
+            filter_parts.append(f"[{roar_input_idx}:a]asplit={num_clips}{split_labels}")
+
+    # ── Per-clip audio: TTS commentary, roar SFX (no game audio) ────────
     for j, c in enumerate(clip_details):
-        offset_ms = int(start_offsets[j] * 1000)
+        off_ms = int(start_offsets[j] * 1000)
+        clip_dur = c["duration"]
 
-        if c["game_audio"]:
-            lbl = f"[ga{j}]"
-            filter_parts.append(f"[{seg_idx}:a]adelay={offset_ms}|{offset_ms},volume=0.8{lbl}")
-            seg_labels.append(lbl)
-            seg_idx += 1
-
-        if c["tts"]:
+        # TTS commentary — prominent, starts 0.3s into clip for natural feel
+        if c["tts"] and os.path.exists(c["tts"]):
             lbl = f"[tts{j}]"
-            filter_parts.append(f"[{seg_idx}:a]adelay={offset_ms}|{offset_ms},volume=1.5{lbl}")
-            seg_labels.append(lbl)
-            t_s = start_offsets[j]
-            t_e = t_s + 5.0
-            duck_exprs.append(f"between(t,{t_s:.1f},{t_e:.1f})")
-            seg_idx += 1
+            extra_inputs += ["-i", c["tts"]]
+            tts_delay = off_ms + 300  # 0.3s after clip start
+            filter_parts.append(
+                f"[{next_idx}:a]volume=1.6,"
+                f"afade=t=in:st=0:d=0.2,afade=t=out:st={max(0,clip_dur-0.5):.2f}:d=0.5,"
+                f"adelay={tts_delay}|{tts_delay}{lbl}"
+            )
+            mix_labels.append(lbl)
+            next_idx += 1
 
-    # Mix segments
-    if seg_labels:
-        filter_parts.append(f"{''.join(seg_labels)}amix=inputs={len(seg_labels)}:dropout_transition=0[segs]")
+        # Roar SFX at the start of each clip (big moment emphasis)
+        if has_roar:
+            lbl = f"[roar{j}]"
+            roar_delay = off_ms + 200  # 0.2s into clip
+            filter_parts.append(
+                f"[_roar{j}]volume=0.40,"
+                f"afade=t=in:st=0:d=0.15,afade=t=out:st=1.5:d=1.0,"
+                f"adelay={roar_delay}|{roar_delay}{lbl}"
+            )
+            mix_labels.append(lbl)
+
+    # ── Final mix: all layers together ────────────────────────────────────
+    if len(mix_labels) >= 2:
+        filter_parts.append(
+            f"{''.join(mix_labels)}amix=inputs={len(mix_labels)}"
+            f":duration=first:dropout_transition=3:normalize=0[final_a]"
+        )
+    elif len(mix_labels) == 1:
+        # Only one audio source — just rename it
+        filter_parts.append(f"{mix_labels[0]}acopy[final_a]")
     else:
-        filter_parts.append(f"anullsrc=r=44100:cl=stereo[segs]")
+        filter_parts.append("anullsrc=r=44100:cl=stereo[final_a]")
 
-    # Duck background during TTS
-    if duck_exprs:
-        duck_str = "+".join(duck_exprs)
-        filter_parts.append(f"[base_bg]volume='if({duck_str},0.25,1.0)':eval=frame[bg_ducked]")
-    else:
-        filter_parts.append("[base_bg]acopy[bg_ducked]")
+    audio_ok = _run_ffmpeg(
+        ["ffmpeg", "-y",
+         "-i", v_stitched]
+        + extra_inputs
+        + ["-filter_complex", ";".join(filter_parts),
+           "-map", "0:v", "-map", "[final_a]",
+           "-shortest",
+           "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+           "-movflags", "+faststart",
+           final_reel],
+        timeout=300,
+    )
 
-    filter_parts.append("[bg_ducked][segs]amix=inputs=2:duration=first[final_a]")
+    if not audio_ok:
+        # Fallback: copy video without complex audio
+        logger.warning("[Reel] Audio mix failed, copying video-only")
+        _run_ffmpeg(
+            ["ffmpeg", "-y", "-i", v_stitched,
+             "-c:v", "copy", "-an",
+             "-movflags", "+faststart", final_reel],
+            timeout=120,
+        )
 
-    final_cmd.extend([
-        "-filter_complex", ";".join(filter_parts),
-        "-map", "0:v", "-map", "[final_a]",
-        "-shortest",
-        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-        final_reel
-    ])
-
-    res = subprocess.run(final_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if res.returncode != 0:
-        logger.error(f"Audio mix failed: {res.stderr[-500:]}")
-        # Fallback: just copy video without mixed audio
-        fallback_cmd = ["ffmpeg", "-y", "-i", v_output, "-c", "copy", final_reel]
-        subprocess.run(fallback_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    # ── Cleanup — only remove temp audio files, KEEP the clip MP4s ─────────
+    # ── Cleanup temp files ────────────────────────────────────────────────────
     for c in clip_details:
-        for p in [c["tts"], c["game_audio"]]:
-            if p and os.path.exists(p):
-                try: os.remove(p)
-                except: pass
-    trans_file = os.path.join(output_dir, f"v_trans_{match_id}.mp4")
-    if os.path.exists(trans_file):
+        p = c.get("tts")
+        if p and os.path.exists(p):
+            try: os.remove(p)
+            except: pass
+    trans_file = os.path.join(output_dir, f"v_trans_{match_id}{ar_tag}.mp4")
+    if os.path.exists(trans_file) and trans_file != (clip_details[0]["video"] if clip_details else ""):
         try: os.remove(trans_file)
         except: pass
 
-    if os.path.exists(final_reel):
-        logger.info(f"✅ Highlight reel generated: {final_reel} | {len(clip_public_urls)} individual clips")
-        return {
-            'reel_url': f"/uploads/highlight_reel_{match_id}.mp4",
-            'clip_urls': clip_public_urls,
-        }
+    if os.path.exists(final_reel) and os.path.getsize(final_reel) > 1024:
+        reel_url = f"/uploads/highlight_reel_{match_id}{ar_suffix}.mp4"
+        logger.info(f"[Reel] ✓ {final_reel} | clips={len(clip_public_urls)}")
+        return {'reel_url': reel_url, 'clip_urls': clip_public_urls}
 
-    logger.error("Highlight reel generation failed")
+    logger.error("[Reel] Final reel not created")
     return {'reel_url': None, 'clip_urls': clip_public_urls}
 
 

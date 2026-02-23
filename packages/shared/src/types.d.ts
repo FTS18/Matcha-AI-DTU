@@ -42,6 +42,7 @@ export interface MatchDetail {
     createdAt: string;
     summary: string | null;
     highlightReelUrl: string | null;
+    highlightReelPortraitUrl: string | null;
     trackingData: TrackFrame[] | null;
     teamColors: number[][] | null;
     heatmapUrl: string | null;
@@ -92,6 +93,7 @@ export interface AnalysisPayload {
     duration?: number;
     summary?: string;
     highlightReelUrl?: string;
+    highlightReelPortraitUrl?: string;
     trackingData?: TrackFrame[];
     teamColors?: number[][];
     heatmapUrl?: string;

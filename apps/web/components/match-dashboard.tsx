@@ -6,7 +6,7 @@ import { CheckCircle2, Loader2, Upload, XCircle, LayoutGrid, Clock, AlertTriangl
 import { useMatches } from "@/hooks/useMatches";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { STATUS_CONFIG as SHARED_STATUS_CONFIG, formatTime, timeAgo } from "@matcha/shared";
+import { STATUS_CONFIG as SHARED_STATUS_CONFIG, PIPELINE_STAGES, formatTime, timeAgo } from "@matcha/shared";
 
 const API_BASE = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL || process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:4000";
 
@@ -39,7 +39,7 @@ const MiniHeatmap = ({ matches }: { matches: any }) => (
 );
 
 export const MatchDashboard = React.memo(function MatchDashboardContent() {
-  const { matches, loading, progressMap, deleteMatch, reanalyzeMatch, refetch } = useMatches();
+  const { matches, loading, progressMap, stageMap, deleteMatch, reanalyzeMatch, refetch } = useMatches();
   const [filter, setFilter] = useState<FilterOption>("ALL");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
@@ -238,7 +238,7 @@ export const MatchDashboard = React.memo(function MatchDashboardContent() {
                     <div className="px-4 py-2.5 bg-blue-500/5 border-b border-blue-500/15">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="font-mono text-[8px] uppercase tracking-widest text-blue-300/70">
-                          {m.status === "UPLOADED" && safeProgress === 0 ? "Queued" : "Analysing"}
+                          {stageMap[m.id] ? (PIPELINE_STAGES[stageMap[m.id]] ?? stageMap[m.id]) : (m.status === "UPLOADED" && safeProgress === 0 ? "Queued" : "Analysing")}
                         </span>
                         <span className="font-mono text-[10px] tabular-nums text-blue-300 font-bold">{safeProgress}%</span>
                       </div>
@@ -320,7 +320,7 @@ export const MatchDashboard = React.memo(function MatchDashboardContent() {
                       {isProcessing && (
                         <div className="mt-1.5 space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[7px] uppercase tracking-[0.15em] text-muted-foreground/70">{m.status === "UPLOADED" && safeProgress === 0 ? "Queued" : "Processing"}</span>
+                            <span className="font-mono text-[7px] uppercase tracking-[0.15em] text-muted-foreground/70">{stageMap[m.id] ? (PIPELINE_STAGES[stageMap[m.id]] ?? stageMap[m.id]) : (m.status === "UPLOADED" && safeProgress === 0 ? "Queued" : "Processing")}</span>
                             <span className="font-mono text-[9px] tabular-nums text-blue-300">{safeProgress}%</span>
                           </div>
                           <div className="h-1 w-full bg-white/10 overflow-hidden rounded-sm">

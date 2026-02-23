@@ -26,4 +26,27 @@ export enum WsEvents {
   MATCH_EVENT = "matchEvent",
   PROGRESS = "progress",
   COMPLETE = "complete",
+  TRACKING_UPDATE = "trackingUpdate",
 }
+
+/** Pipeline stage labels — sent with progress updates for live logging */
+export const PIPELINE_STAGES: Record<string, string> = {
+  queued: "Queued for analysis",
+  downloading: "Downloading video",
+  compressing: "Compressing video",
+  scanning: "Scanning frames",
+  tracking: "Tracking players & ball",
+  motion: "Analysing motion",
+  events: "Detecting events",
+  cv_physics: "CV physics analysis",
+  scoring: "Scoring events",
+  commentary: "Generating AI commentary",
+  highlights: "Selecting highlights",
+  reel: "Generating highlight reel",
+  heatmap: "Generating heatmap & analytics",
+  tactics: "Tactical analysis",
+  summary: "Generating AI summary",
+  thumbnail: "Generating thumbnail",
+  saving: "Saving results",
+  done: "Analysis complete",
+};

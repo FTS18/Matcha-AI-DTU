@@ -37,7 +37,7 @@ export default function Home() {
         <div className="absolute inset-0 z-0 bg-background/85 backdrop-blur-[2px]" />
 
         {/* Hero Content Layer */}
-        <div className="relative z-10 max-w-[1440px] mx-auto px-6 sm:px-8 w-full flex flex-col items-center text-center gap-6 sm:gap-10">
+        <div className="relative z-10 max-w-360 mx-auto px-6 sm:px-8 w-full flex flex-col items-center text-center gap-6 sm:gap-10">
           
           <div className="flex flex-col items-center opacity-0" style={{ animation: "fadeup 0.8s ease-out forwards" }}>
             <h1 className="font-display flex flex-col items-center leading-[0.85] text-[clamp(48px,12vw,120px)] text-foreground shadow-sm">
@@ -64,7 +64,7 @@ export default function Home() {
             className="flex w-full sm:w-auto items-center justify-center gap-2 sm:gap-16 mt-4 backdrop-blur-md bg-background/50 px-4 sm:px-12 py-4 sm:py-6 rounded-xl border border-border/60 shadow-2xl relative overflow-hidden group opacity-0"
             style={{ animation: "fadeup 0.8s ease-out 0.4s forwards" }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute inset-0 bg-linear-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             {[
               { n: "09", label: "EVENTS" },
               { n: "04", label: "REELS" },
@@ -81,7 +81,7 @@ export default function Home() {
       </div>
 
       {/* ── Main grid ─────────────────────────────────── */}
-      <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-8 w-full">
+      <div className="relative z-10 max-w-360 mx-auto px-4 sm:px-8 w-full">
         <div className="grid gap-0 grid-cols-1 xl:grid-cols-[minmax(0,500px)_1fr]">
           {/* LEFT — Upload */}
           <div className="xl:border-r border-b xl:border-b-0 py-8 sm:py-10 xl:pr-10 border-border">
@@ -103,7 +103,7 @@ export default function Home() {
               ].map((f) => (
                 <div
                   key={f}
-                  className="font-mono px-4 py-3 transition-colors text-[9px] bg-card text-muted-foreground uppercase tracking-[0.10em] flex items-center"
+                  className="font-mono px-4 py-3 transition-colors text-[9px] bg-card text-muted-foreground uppercase tracking-widest flex items-center"
                 >
                   {f}
                 </div>

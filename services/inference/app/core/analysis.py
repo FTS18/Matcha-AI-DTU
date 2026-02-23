@@ -133,6 +133,16 @@ except ImportError as e:
     GoalpostDetector = None
     GoalpostTracker = None
 
+# ── Scoreboard Detection (score tracking & goal verification) ─────────────────
+try:
+    from app.core.scoreboard_detector import ScoreboardDetector
+    SCOREBOARD_DETECTION_AVAILABLE = True
+    logger.info("Scoreboard Detection module loaded ✓")
+except ImportError as e:
+    logger.warning(f"Scoreboard Detection not available: {e}")
+    SCOREBOARD_DETECTION_AVAILABLE = False
+    ScoreboardDetector = None
+
 # ── Vision Transformers (Sateek Action Spotting) ───────────────────────────
 try:
     from app.core.transformer_detector import TransformerActionSpotter
@@ -192,8 +202,10 @@ except Exception as e:
     from ultralytics import YOLO  # type: ignore
 
 from app.core.llm import (
-    analyze_frame_with_vision, 
-    generate_commentary, 
+    analyze_frame_with_vision,
+    analyze_frames_batch,
+    generate_commentary,
+    generate_commentary_parallel,
     generate_match_summary, 
     _get_gemini
 )
@@ -272,37 +284,34 @@ def _frame_to_pil(frame):
 def validate_candidate_moment(cap, timestamp: float, fps: float, duration: float) -> Optional[Dict]:
     """
     Validate a candidate moment by analyzing multiple frames around it.
+    Sends all 3 frames in ONE Gemini batch call (3x fewer API requests).
     Uses majority voting across frames for reliable event classification.
-    
-    Returns: {"event_type": str, "confidence": float, "timestamp": float, "description": str}
-             or None if no significant event detected.
     """
-    # Sample 3 frames: 0.5s before, at timestamp, and 0.5s after
-    offsets = [-0.5, 0.0, 0.5]
-    results = []
-    
-    for offset in offsets:
+    from app.core.llm import analyze_frames_batch
+
+    # Collect frames: 0.5s before, at timestamp, 0.5s after
+    frames_with_ts: list = []
+    for offset in [-0.5, 0.0, 0.5]:
         t = timestamp + offset
         if t < 0 or t > duration:
             continue
-            
         frame_num = int(t * fps)
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
         ret, frame = cap.read()
-        
         if not ret:
             continue
-            
-        # Downscale for faster API calls
         h, w = frame.shape[:2]
         if w > 640:
-            scale = 640 / w
-            frame = cv2.resize(frame, (640, int(h * scale)))
-        
-        result = analyze_frame_with_vision(frame, t)
-        if result["event_type"] != "NONE" and result["confidence"] >= 0.5:
-            results.append(result)
-    
+            frame = cv2.resize(frame, (640, int(h * 640 / w)))
+        frames_with_ts.append((frame, t))
+
+    if not frames_with_ts:
+        return None
+
+    # One batch call instead of 3 separate calls
+    batch_results = analyze_frames_batch(frames_with_ts)
+    results = [r for r in batch_results if r["event_type"] != "NONE" and r["confidence"] >= 0.5]
+
     if not results:
         return None
     
@@ -900,7 +909,7 @@ def select_highlights_with_narrative(scored_events: list, duration: float, top_n
 
 def _report_failure(match_id):
     try:
-        requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": -1}, timeout=3)
+        requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": -1, "stage": "failed"}, timeout=3)
     except Exception:
         pass
 
@@ -916,6 +925,26 @@ def emit_live_event(match_id: str, event: dict):
             f"{ORCHESTRATOR_URL}/matches/{match_id}/live-event",
             json=event,
             timeout=2,
+        )
+    except Exception:
+        pass
+
+
+_tracking_buffer: list = []
+_tracking_buffer_lock = None  # Lazy-init to avoid import-time threading
+
+def emit_tracking_frames(match_id: str, frames: list):
+    """
+    POST a batch of new tracking frames to the orchestrator for real-time
+    overlay updates in the browser. Silently skips on failure.
+    """
+    if not frames:
+        return
+    try:
+        requests.post(
+            f"{ORCHESTRATOR_URL}/matches/{match_id}/tracking-update",
+            json={"frames": frames},
+            timeout=3,
         )
     except Exception:
         pass
@@ -964,7 +993,7 @@ def _download_youtube_video(url: str, match_id: str, start_time: Optional[float]
             try:
                 requests.post(
                     f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", 
-                    json={"progress": overall_progress}, 
+                    json={"progress": overall_progress, "stage": "downloading"}, 
                     timeout=1
                 )
             except:
@@ -980,7 +1009,8 @@ def _download_youtube_video(url: str, match_id: str, start_time: Optional[float]
         'quiet': False,
         'no_warnings': True,
         'merge_output_format': 'mp4',
-        'download_ranges': download_range_func(None, [(start, end)]),
+        'noplaylist': True,  # download ONLY the single video, never the whole playlist
+        'download_ranges': download_range_func(None, [(start, end)]),  # type: ignore[arg-type]
         'force_keyframes_at_cuts': True,
         'progress_hooks': [progress_hook],
     }
@@ -1097,7 +1127,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
     if video_path.startswith("http://") or video_path.startswith("https://"):
         try:
             # Emit progress indicating we are downloading
-            requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": 5}, timeout=3)
+            requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": 5, "stage": "downloading"}, timeout=3)
             video_path = _download_youtube_video(video_path, match_id, start_time=start_time, end_time=end_time)
         except Exception as e:
             logger.error(str(e))
@@ -1112,6 +1142,10 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
     
     # Pre-compress large videos for faster processing
     original_video_path = video_path
+    try:
+        requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": 22, "stage": "compressing"}, timeout=1)
+    except Exception:
+        pass
     video_path = _precompress_video(video_path, match_id, CONFIG)
     compressed = (video_path != original_video_path)
     
@@ -1140,6 +1174,12 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
         track_interval = 1
         window_frames = max(1, int(process_fps * CONFIG["MOTION_WINDOW_SECS"]))
         target_height = CONFIG["YOLO_DOWNSCALE_HEIGHT"] if frame_h > 720 else frame_h
+
+        # Emit initial scanning stage
+        try:
+            requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": 25, "stage": "scanning"}, timeout=1)
+        except Exception:
+            pass
 
         logger.info(f"Video: {total_frames}f @ {fps:.1f}fps = {duration:.1f}s [{frame_w}×{frame_h}] → {target_height}p @ {process_fps}fps")
 
@@ -1187,10 +1227,24 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
         _transformer_spotter = None
         _dynamic_calibrator = None
         vit_frame_buffer = deque(maxlen=16) # VideoMAE best works with 16-frame clips
+
+        # Initialize Scoreboard Detector (score tracking & goal verification)
+        _scoreboard_detector = None
+        if SCOREBOARD_DETECTION_AVAILABLE and ScoreboardDetector:
+            try:
+                _scoreboard_detector = ScoreboardDetector(
+                    sample_interval=max(1, int(fps)),  # Check ~1 per second
+                    min_confidence=0.45,
+                    score_change_cooldown=10.0,
+                )
+                logger.info("ScoreboardDetector initialised ✓")
+            except Exception as _sbe:
+                logger.warning(f"ScoreboardDetector init failed: {_sbe}")
+                _scoreboard_detector = None
         if TRANSFORMER_AVAILABLE and TransformerActionSpotter:
             try:
                 _transformer_spotter = TransformerActionSpotter()
-                _dynamic_calibrator = DynamicPitchCalibrator()
+                _dynamic_calibrator = DynamicPitchCalibrator()  # type: ignore[misc]
                 logger.info("Vision Transformer & Auto-Calibrator initialized ✓")
             except Exception as _te:
                 logger.warning(f"Transformer init failed: {_te}")
@@ -1198,6 +1252,10 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
 
         # NOTE: raw_events and last_seen are no longer used here
         # Events are now detected via Vision AI after the main loop
+
+        # ── Vision API cooldown: avoid burning quota on rapid-fire frames ────
+        _last_vision_call_ts = -999.0  # timestamp of last Gemini vision call
+        _VISION_COOLDOWN_SECS = 10.0   # minimum seconds between vision API calls
 
         while cap.isOpened():
             # Fast-forward: skip decoding frames we don't need
@@ -1237,7 +1295,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 
                 # Analyze every 16-frame window for complex actions
                 if len(vit_frame_buffer) == 16:
-                    vit_res = _transformer_spotter.spot_actions(vit_frame_buffer, fps)
+                    vit_res = _transformer_spotter.spot_actions(list(vit_frame_buffer), fps)
                     if vit_res and vit_res["confidence"] >= 0.65:
                         # Map common kinetics labels to our events if possible
                         vit_label = vit_res["label"].lower()
@@ -1274,30 +1332,35 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 # ── Live Event Detection (Sliding Window) ──────────────────
                 # If we are in stream mode or have high intensity, check now
                 if m_score >= CONFIG["MOTION_PEAK_THRESHOLD"]:
-                    # Grab current frame for analysis
-                    analysis_res = analyze_frame_with_vision(frame, timestamp, context=f"Language: {language}")
-                    if analysis_res["event_type"] != "NONE" and analysis_res["confidence"] >= 0.65:
-                        live_evt = {
-                            "timestamp": round(timestamp, 2),
-                            "type": analysis_res["event_type"],
-                            "confidence": round(analysis_res["confidence"], 3),
-                            "commentary": analysis_res.get("description", ""),
-                            "finalScore": round(m_score * 10, 1),
-                            "source": "live_sliding_window"
-                        }
-                        emit_live_event(match_id, live_evt)
-                        logger.info(f"✨ LIVE EVENT: {live_evt['type']} at {live_evt['timestamp']}s")
+                    # Cooldown: skip if we called vision too recently (saves quota)
+                    if (timestamp - _last_vision_call_ts) < _VISION_COOLDOWN_SECS:
+                        pass  # skip this window, too close to last call
+                    else:
+                        # Grab current frame for analysis
+                        analysis_res = analyze_frame_with_vision(frame, timestamp, context=f"Language: {language}")
+                        _last_vision_call_ts = timestamp
+                        if analysis_res["event_type"] != "NONE" and analysis_res["confidence"] >= 0.65:
+                            live_evt = {
+                                "timestamp": round(timestamp, 2),
+                                "type": analysis_res["event_type"],
+                                "confidence": round(analysis_res["confidence"], 3),
+                                "commentary": analysis_res.get("description", ""),
+                                "finalScore": round(m_score * 10, 1),
+                                "source": "live_sliding_window"
+                            }
+                            emit_live_event(match_id, live_evt)
+                            logger.info(f"✨ LIVE EVENT: {live_evt['type']} at {live_evt['timestamp']}s")
 
                 window_diffs = []
 
             # ── Progress update ──────────────────────────────────────────────
-            if processed_count % 5 == 0 and total_frames > 0:
+            if processed_count % 15 == 0 and total_frames > 0:
                 try:
                     # Frame processing = 0-60% of total progress
                     frame_pct = int((frame_count / total_frames) * 60)
                     requests.post(
                         f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
-                        json={"progress": min(frame_pct, 60)},
+                        json={"progress": min(frame_pct, 60), "stage": "scanning"},
                         timeout=1,
                     )
                 except Exception:
@@ -1439,13 +1502,24 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 except Exception as _gpe:
                     logger.debug(f"GoalpostDetector error: {_gpe}")
 
+            # ── ScoreboardDetector per-frame ─────────────────────────────────
+            if _scoreboard_detector is not None:
+                try:
+                    _scoreboard_detector.process_frame(frame, frame_count, timestamp)
+                except Exception as _sbe:
+                    logger.debug(f"ScoreboardDetector error: {_sbe}")
+
             # Store tracking frame on every detection tick (max every track_interval)
             if (processed_count % track_interval == 0) and (frame_balls or frame_persons):
-                track_frames.append({
+                new_frame = {
                     "t": round(timestamp, 2),
                     "b": frame_balls[:4],      # ≤4 balls (sports balls)
                     "p": frame_persons[:25],   # ≤25 players (full pitch)
-                })
+                }
+                track_frames.append(new_frame)
+                # Emit in batches of 30 frames so browser overlay stays live
+                if len(track_frames) % 30 == 0:
+                    emit_tracking_frames(match_id, track_frames[-30:])
 
         cap.release()
 
@@ -1460,6 +1534,10 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             })
 
         # ── Team colour clustering ────────────────────────────────────────────
+        try:
+            requests.post(f"{ORCHESTRATOR_URL}/matches/{match_id}/progress", json={"progress": 61, "stage": "tracking"}, timeout=1)
+        except Exception:
+            pass
         # Cluster all jersey colours into 2 teams, then replace the temporary
         # [r,g,b] stored per person with its team index {0, 1}.
         team_colors = [[220, 60, 60], [60, 100, 220]]   # fallback: red / blue
@@ -1500,7 +1578,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             try:
                 requests.post(
                     f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
-                    json={"progress": min(pct, 99)},
+                    json={"progress": min(pct, 99), "stage": stage},
                     timeout=1,
                 )
                 if stage:
@@ -1511,7 +1589,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
         # ══════════════════════════════════════════════════════════════════════
         # ██ SOCCERNET EVENT DETECTION (football-specific trained model) ██
         # ══════════════════════════════════════════════════════════════════════
-        emit_progress(62, "SoccerNet event detection")
+        emit_progress(62, "events")
         logger.info("Phase 2: SoccerNet football event detection...")
         
         raw_events = []
@@ -1547,7 +1625,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 logger.error(f"SoccerNet analysis failed: {e}")
                 
         # Secondary: CV Physics Detector (Runs directly on YOLO tracking data)
-        emit_progress(67, "CV Physics analysis")
+        emit_progress(67, "cv_physics")
         if CV_PHYSICS_AVAILABLE and detect_cv_physics:
             try:
                 logger.info("Running CV Physics analysis on track frames...")
@@ -1611,8 +1689,21 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
         
         logger.info(f"Final event detection: {len(raw_events)} events")
         
+        # ── Scoreboard-based goal verification ───────────────────────────────
+        if _scoreboard_detector is not None and _scoreboard_detector.has_scoreboard:
+            logger.info(f"📊 Scoreboard detected ({_scoreboard_detector.readings_count} readings) — verifying goals...")
+            raw_events = _scoreboard_detector.verify_goal_events(raw_events, tolerance_sec=15.0)
+            final_score = _scoreboard_detector.get_current_score()
+            if final_score:
+                logger.info(f"📊 Final scoreboard reading: {final_score[0]} - {final_score[1]}")
+            # Re-sort after possible new events from scoreboard
+            raw_events.sort(key=lambda x: x["timestamp"])
+            logger.info(f"Events after scoreboard verification: {len(raw_events)}")
+        elif _scoreboard_detector is not None:
+            logger.info("📊 No scoreboard detected in video — skipping score verification")
+        
         # ── Score events & emit live ─────────────────────────────────────────
-        emit_progress(72, "Scoring events")
+        emit_progress(72, "scoring")
         scored_events: list = []
         for ev in raw_events:
             m_score   = _get_motion_at(motion_windows, ev["timestamp"])
@@ -1623,16 +1714,16 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             # Fire-and-forget: sends to NestJS → WebSocket → browser
             emit_live_event(match_id, scored_ev)
 
-        # ── Gemini commentary per event ──────────────────────────────────────
-        emit_progress(75, f"Generating AI commentary for {len(scored_events)} events")
-        for i, ev in enumerate(scored_events):
-            ctx = scored_events[max(0, i - 3):i] + scored_events[i + 1:i + 3]
-            ev["commentary"] = generate_commentary(
-                ev["type"], ev["finalScore"], ev["timestamp"], duration, ctx, language=language
-            )
+        # ── Gemini commentary per event (parallel) ───────────────────────────
+        from app.core.llm import generate_commentary_parallel
+        emit_progress(75, "commentary")
+        try:
+            scored_events = generate_commentary_parallel(scored_events, duration, language=language, max_workers=3)
+        except Exception as e:
+            logger.warning(f"Commentary generation timed out or failed: {e} — continuing without commentary")
 
         # ── PHASE 2: Highlights with narrative flow ──────────────────────────
-        emit_progress(80, "Selecting highlights")
+        emit_progress(80, "highlights")
         if CONFIG["SMART_HIGHLIGHT_SELECTION"]:
             logger.info("Selecting highlights with narrative context...")
             highlights = select_highlights_with_narrative(
@@ -1643,36 +1734,58 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             highlights = select_highlights(scored_events, duration)
 
         highlight_reel_url = None
+        highlight_reel_portrait_url = None
         try:
-            emit_progress(83, "Generating highlight reel with TTS & music")
-            logger.info("Generating highlight reel with TTS, music, and crowd noise...")
+            emit_progress(83, "reel")
+            logger.info("Generating highlight reel (16:9 landscape) with TTS, music, and crowd noise...")
             UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
             # Use original video for highlight reel (compressed is 1fps)
-            highlight_reel_url = create_highlight_reel(
+            landscape_result = create_highlight_reel(
                 video_path=original_video_path,
                 highlights=highlights,
                 match_id=match_id,
                 output_dir=str(UPLOADS_DIR),
                 music_dir=MUSIC_DIR,
                 tracking_data=track_frames,
-                aspect_ratio=aspect_ratio,
+                aspect_ratio="16:9",
                 language=language
             )
             # Unpack dict result — update highlights with per-clip videoUrl
-            if isinstance(highlight_reel_url, dict):
-                clip_urls = highlight_reel_url.get('clip_urls', [])
-                highlight_reel_url = highlight_reel_url.get('reel_url')
+            if isinstance(landscape_result, dict):
+                clip_urls = landscape_result.get('clip_urls', [])
+                highlight_reel_url = landscape_result.get('reel_url')
                 for i, h in enumerate(highlights):
                     clip_url = clip_urls[i] if i < len(clip_urls) else None
                     if clip_url:
                         h['videoUrl'] = clip_url
                 logger.info(f"Per-clip URLs assigned to {sum(1 for h in highlights if h.get('videoUrl'))} highlights")
         except Exception as e:
-            logger.warning(f"Highlight reel generation skipped: {e}")
+            logger.warning(f"Highlight reel (landscape) generation skipped: {e}")
+
+        # ── Generate 9:16 portrait reel with smart ball-following crop ─────
+        try:
+            emit_progress(85, "reel")
+            logger.info("Generating highlight reel (9:16 portrait) with smart ball-following crop...")
+            portrait_result = create_highlight_reel(
+                video_path=original_video_path,
+                highlights=highlights,
+                match_id=match_id,
+                output_dir=str(UPLOADS_DIR),
+                music_dir=MUSIC_DIR,
+                tracking_data=track_frames,
+                aspect_ratio="9:16",
+                language=language
+            )
+            if isinstance(portrait_result, dict):
+                highlight_reel_portrait_url = portrait_result.get('reel_url')
+                if highlight_reel_portrait_url:
+                    logger.info(f"Portrait reel generated: {highlight_reel_portrait_url}")
+        except Exception as e:
+            logger.warning(f"Highlight reel (portrait) generation skipped: {e}")
 
 
         # ── Heatmap Generation ────────────────────────────────────────────────
-        emit_progress(88, "Generating heatmap & analytics")
+        emit_progress(88, "heatmap")
         heatmap_url = None
         top_speed_kmh = 0.0
         if HEATMAP_AVAILABLE and generate_heatmap and track_frames:
@@ -1698,6 +1811,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 logger.warning(f"Ball speed estimation failed: {e}")
 
         # ── Advanced Tactical Analysis ────────────────────────────────────────
+        emit_progress(90, "tactics")
         advanced_stats = {}
         if HEATMAP_AVAILABLE and track_frames:
             try:
@@ -1763,9 +1877,13 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             logger.info(f"Audio volumes: {audio_volumes}")
 
         # ── Gemini match summary ──────────────────────────────────────────────
-        emit_progress(93, "Generating AI match summary")
+        emit_progress(93, "summary")
         logger.info("Generating Gemini match summary…")
-        summary = generate_match_summary(scored_events, highlights, duration, language=language)
+        try:
+            summary = generate_match_summary(scored_events, highlights, duration, language=language)
+        except Exception as e:
+            logger.warning(f"Match summary generation failed: {e}")
+            summary = None
         if not summary:
             summary = f"Match analysis completed. {len(scored_events)} events detected across {round(duration)}s of footage."
         logger.info(f"Summary: {len(summary)} chars")
@@ -1797,7 +1915,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             return obj
 
         # ── Thumbnail Generation ─────────────────────────────────────────────
-        emit_progress(97, "Generating thumbnail")
+        emit_progress(97, "thumbnail")
         thumbnail_url = None
         try:
             cap_thumb = cv2.VideoCapture(original_video_path)
@@ -1841,6 +1959,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             "duration":      round(float(duration), 1),
             "summary":       summary,
             "highlightReelUrl": highlight_reel_url,
+            "highlightReelPortraitUrl": highlight_reel_portrait_url,
             "thumbnailUrl":  thumbnail_url,
             "trackingData":  convert_numpy(track_frames),
             "teamColors":    convert_numpy(team_colors),   # [[R,G,B],[R,G,B]] team0 / team1
@@ -1855,6 +1974,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             "audioVolumes": audio_volumes,  # Dynamic audio mixing parameters
         }
 
+        emit_progress(99, "saving")
         try:
             resp = requests.post(
                 f"{ORCHESTRATOR_URL}/matches/{match_id}/complete",
@@ -1867,7 +1987,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             try:
                 requests.post(
                     f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
-                    json={"progress": 100}, timeout=5
+                    json={"progress": 100, "stage": "done"}, timeout=5
                 )
             except Exception:
                 pass
