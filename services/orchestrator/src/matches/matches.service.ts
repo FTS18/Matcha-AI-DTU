@@ -95,7 +95,7 @@ export class MatchesService {
     return match;
   }
 
-  async triggerInference(matchId: string, videoUrl: string, startTime?: number, endTime?: number) {
+  async triggerInference(matchId: string, videoUrl: string, startTime?: number, endTime?: number, aspectRatio?: string) {
     const inferenceUrl = process.env.INFERENCE_URL || 'http://localhost:8000';
     const maxAttempts = 5;
     const baseDelayMs = 2000;
@@ -110,7 +110,8 @@ export class MatchesService {
               match_id: matchId,
               video_url: videoUrl,
               start_time: startTime,
-              end_time: endTime
+              end_time: endTime,
+              aspect_ratio: aspectRatio ?? '16:9',
             },
             { timeout: 30000 },
           ) as any,
@@ -182,7 +183,21 @@ export class MatchesService {
     return { ok: true };
   }
 
-  async updateProgress(id: string, progress: number) {
+  async pushTrackingUpdate(id: string, frames: any[]) {
+    /**
+     * Called by the inference service periodically with newly-tracked frames.
+     * Broadcasts via WebSocket so the browser overlay updates in real-time
+     * without waiting for the full analysis to complete.
+     */
+    if (!frames?.length) return { ok: true };
+    this.eventsGateway.server.to(id).emit(WsEvents.TRACKING_UPDATE, {
+      matchId: id,
+      frames,
+    });
+    return { ok: true };
+  }
+
+  async updateProgress(id: string, progress: number, stage?: string) {
     // progress === -1 is a failure signal from the inference service
     const status = progress === -1 ? 'FAILED' : 'PROCESSING';
     const safeProgress = progress === -1 ? 0 : Math.round(progress);
@@ -195,7 +210,7 @@ export class MatchesService {
       .catch((err: any) => {
         this.logger.warn(`Failed to update progress for match ${id}: ${err.message}`);
       });
-    this.eventsGateway.server.to(id).emit(WsEvents.PROGRESS, { matchId: id, progress });
+    this.eventsGateway.server.to(id).emit(WsEvents.PROGRESS, { matchId: id, progress, stage: stage || undefined });
   }
 
   async completeMatch(id: string, payload: AnalysisPayload) {
@@ -210,6 +225,7 @@ export class MatchesService {
       duration,
       summary,
       highlightReelUrl,
+      highlightReelPortraitUrl,
       trackingData,
       teamColors,
       heatmapUrl,
@@ -275,6 +291,7 @@ export class MatchesService {
           duration: Math.max(0, duration ?? 0), // Ensure non-negative
           summary: (summary ?? '').substring(0, 5000), // Cap at 5000 chars
           highlightReelUrl,
+          highlightReelPortraitUrl: highlightReelPortraitUrl ?? null,
           trackingData,
           teamColors,
           heatmapUrl: heatmapUrl ?? null,
@@ -285,7 +302,7 @@ export class MatchesService {
       }),
     ]);
 
-    this.eventsGateway.server.to(id).emit(WsEvents.PROGRESS, { matchId: id, progress: 100 });
+    this.eventsGateway.server.to(id).emit(WsEvents.PROGRESS, { matchId: id, progress: 100, stage: 'done' });
     this.eventsGateway.server.to(id).emit(WsEvents.COMPLETE, {
       matchId: id,
       eventCount: validEvents.length,
@@ -298,7 +315,7 @@ export class MatchesService {
     return { ok: true };
   }
 
-  async reanalyzeMatch(id: string, userId: string): Promise<{ ok: boolean }> {
+  async reanalyzeMatch(id: string, userId: string, aspectRatio?: string): Promise<{ ok: boolean }> {
     if (!id || typeof id !== 'string') {
       this.logger.error("Invalid match ID for reanalysis");
       return { ok: false };
@@ -340,7 +357,7 @@ export class MatchesService {
       uploadUrl.startsWith('http://youtu.be') ||
       uploadUrl.includes('youtube.com')) {
       this.logger.log(`Re-analysing YouTube match ${id}: ${uploadUrl}`);
-      this.triggerInference(id, uploadUrl);
+      this.triggerInference(id, uploadUrl, undefined, undefined, aspectRatio);
       return { ok: true };
     }
 
@@ -356,7 +373,7 @@ export class MatchesService {
     const fileName = uploadUrlParts[uploadUrlParts.length - 1];
     const videoPath = path.join(uploadsDir, fileName);
 
-    this.triggerInference(id, videoPath);
+    this.triggerInference(id, videoPath, undefined, undefined, aspectRatio);
     return { ok: true };
   }
 

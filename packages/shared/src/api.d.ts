@@ -9,6 +9,7 @@ export declare function createApiClient(baseUrl: string): {
     getMatch: (id: string) => Promise<MatchDetail>;
     deleteMatch: (id: string) => Promise<Response>;
     reanalyze: (id: string) => Promise<Response>;
+    generateReel: (id: string, aspectRatio: "16:9" | "9:16") => Promise<Response>;
     uploadVideo: (file: File | Blob, onProgress?: (pct: number) => void) => Promise<MatchSummary>;
     uploadYoutube: (url: string, startTime?: number, endTime?: number) => Promise<MatchSummary>;
     login: (body: any) => Promise<{

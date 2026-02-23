@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
-import type { MatchSummary, ProgressMap } from "@matcha/shared";
+import type { MatchSummary, ProgressMap, StageMap } from "@matcha/shared";
 import { createApiClient, WsEvents } from "@matcha/shared";
 
 export function useMatches(baseUrl: string = "http://localhost:4000") {
   const [matches, setMatches] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [progressMap, setProgressMap] = useState<ProgressMap>({});
+  const [stageMap, setStageMap] = useState<StageMap>({});
 
   const socketRef = useRef<Socket | null>(null);
   const client = useMemo(() => createApiClient(baseUrl), [baseUrl]);
@@ -44,13 +45,16 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
     const socket = io(baseUrl, { transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
-    socket.on(WsEvents.PROGRESS, (data: { matchId: string; progress: number }) => {
+    socket.on(WsEvents.PROGRESS, (data: { matchId: string; progress: number; stage?: string }) => {
       if (data.progress === -1) {
         // Match failed — refetch to get updated status
         fetchMatches();
         return;
       }
       setProgressMap(prev => ({ ...prev, [data.matchId]: data.progress }));
+      if (data.stage) {
+        setStageMap((prev: StageMap) => ({ ...prev, [data.matchId]: data.stage! }));
+      }
       if (data.progress >= 100) {
         setTimeout(fetchMatches, 500);
       }
@@ -110,5 +114,5 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
     }
   };
 
-  return { matches, loading, progressMap, deleteMatch, reanalyzeMatch, refetch: fetchMatches };
+  return { matches, loading, progressMap, stageMap, deleteMatch, reanalyzeMatch, refetch: fetchMatches };
 }

@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Film } from "lucide-react";
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const pathname = usePathname();
 
   return (
     <nav className="w-full border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50 shadow-2xl">
       {/* Content Layer */}
-      <div className="relative z-10 flex items-center justify-between py-3 md:py-4 px-4 sm:px-6 md:px-8 max-w-[1440px] mx-auto">
+      <div className="relative z-10 flex items-center justify-between py-3 md:py-4 px-4 sm:px-6 md:px-8 max-w-360 mx-auto">
         <Link 
           href="/" 
           className="flex items-center gap-2 sm:gap-3 transition-opacity duration-200 hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm group" 
@@ -32,13 +34,41 @@ export function Navbar() {
             <span className="font-display tracking-[0.12em] text-[16px] sm:text-[18px] md:text-[20px] text-foreground drop-shadow-md">MATCHA</span>
             <span className="font-display tracking-[0.12em] ml-0.5 text-[16px] sm:text-[18px] md:text-[20px] text-primary drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]">AI</span>
           </div>
-          <div className="hidden lg:block w-px h-4 mx-2 bg-border flex-shrink-0" />
+          <div className="hidden lg:block w-px h-4 mx-2 bg-border shrink-0" />
           <span className="hidden lg:inline-block font-mono text-[9px] text-muted-foreground uppercase tracking-[0.14em]">DTU EDITION</span>
         </Link>
 
+        {/* Centre nav links */}
+        <div className="hidden md:flex items-center gap-1">
+          <Link
+            href="/highlights"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border transition-colors font-mono text-[10px] uppercase tracking-widest ${
+              pathname === "/highlights"
+                ? "bg-primary/15 border-primary/40 text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border/50 hover:bg-white/5"
+            }`}
+          >
+            <Film className="size-3" />
+            Highlights
+          </Link>
+        </div>
+
         {/* Global System Status & Auth */}
         <div className="flex items-center gap-3 sm:gap-4 md:gap-5">
-          <div className="flex items-center gap-2 px-2 py-1 bg-destructive/20 border border-destructive/30 rounded-sm backdrop-blur-sm hidden sm:flex">
+          {/* Mobile highlights icon (hidden on md+ where centre nav is shown) */}
+          <Link
+            href="/highlights"
+            className={`md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded-sm border transition-colors ${
+              pathname === "/highlights"
+                ? "bg-primary/15 border-primary/40 text-primary"
+                : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-white/5"
+            }`}
+            title="Highlights Feed"
+          >
+            <Film className="size-3.5" />
+          </Link>
+
+          <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-destructive/20 border border-destructive/30 rounded-sm backdrop-blur-sm">
             <span className="size-1.5 rounded-full animate-blink bg-destructive shadow-[0_0_8px_rgba(var(--color-destructive),0.8)]" />
             <span className="font-mono text-[9px] text-destructive uppercase tracking-[0.14em] font-bold mt-px drop-shadow-sm">LIVE</span>
           </div>
@@ -47,7 +77,7 @@ export function Navbar() {
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="hidden md:flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-sm border border-border/50 backdrop-blur-sm">
                 <User className="size-3 text-primary" />
-                <span className="font-mono text-[10px] text-foreground uppercase tracking-[0.14em] mt-px truncate max-w-[80px] lg:max-w-[120px]">
+                <span className="font-mono text-[10px] text-foreground uppercase tracking-[0.14em] mt-px truncate max-w-20 lg:max-w-30">
                   {user.name}
                 </span>
               </div>
@@ -57,7 +87,7 @@ export function Navbar() {
                 title="Sign Out"
               >
                 <LogOut className="size-3" />
-                <span className="hidden sm:inline-block font-mono text-[10px] uppercase tracking-[0.1em] mt-px">Logout</span>
+                <span className="hidden sm:inline-block font-mono text-[10px] uppercase tracking-widest mt-px">Logout</span>
               </button>
             </div>
           ) : (
@@ -65,7 +95,7 @@ export function Navbar() {
               href="/login"
               className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-3 sm:px-4 py-1.5 rounded-sm border border-primary/30 transition-colors"
             >
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em] mt-px font-bold">Sign In</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest mt-px font-bold">Sign In</span>
             </Link>
           )}
         </div>

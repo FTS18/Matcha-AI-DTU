@@ -36,6 +36,13 @@ export function createApiClient(baseUrl: string) {
     reanalyze: (id: string): Promise<Response> =>
       fetchWithRetry(`${apiBase}/matches/${id}/reanalyze`, { method: "POST", headers: getAuthHeaders() }),
 
+    generateReel: (id: string, aspectRatio: "16:9" | "9:16"): Promise<Response> =>
+      fetchWithRetry(`${apiBase}/matches/${id}/reanalyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ aspect_ratio: aspectRatio }),
+      }),
+
     uploadVideo: (file: File | Blob, onProgress?: (pct: number) => void): Promise<MatchSummary> =>
       new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -67,6 +74,14 @@ export function createApiClient(baseUrl: string) {
         return r.json();
       }),
 
+    getYtInfo: (url: string): Promise<{ title: string; duration: number; thumbnail: string; channel: string }> =>
+      fetchWithRetry(`${apiBase}/matches/yt-info?url=${encodeURIComponent(url)}`, {
+        headers: getAuthHeaders(),
+      }).then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      }),
+
     login: (body: any): Promise<{ access_token: string; user: any }> =>
       fetchWithRetry(`${cleanBase}/api/v1/auth/login`, {
         method: "POST",
@@ -93,12 +108,14 @@ export function createApiClient(baseUrl: string) {
         headers: getAuthHeaders(),
       }).then(async (r) => {
         if (!r.ok) {
-          if (r.status === 401 && typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-          }
-          throw new Error("Unauthorized");
+          const err = new Error("Unauthorized") as any;
+          err.status = r.status;
+          throw err;
         }
         return r.json();
+      }).catch((err) => {
+        // Re-throw with status info so AuthContext can decide what to do
+        throw err;
       }),
   };
 }

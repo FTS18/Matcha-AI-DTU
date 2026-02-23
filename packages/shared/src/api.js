@@ -65,6 +65,13 @@ export function createApiClient(baseUrl) {
                 throw new Error(`YouTube upload failed: ${r.statusText}`);
             return r.json();
         }),
+        getYtInfo: (url) => fetchWithRetry(`${apiBase}/matches/yt-info?url=${encodeURIComponent(url)}`, {
+            headers: getAuthHeaders(),
+        }).then((r) => __awaiter(this, void 0, void 0, function* () {
+            if (!r.ok)
+                throw new Error(yield r.text());
+            return r.json();
+        })),
         login: (body) => fetchWithRetry(`${cleanBase}/api/v1/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
