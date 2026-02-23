@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@eslint/eslintrc": "0.1.0",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@matcha/shared": "*",
@@ -31,8 +30,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^10.0.1",
-    "eslint-config-next": "^0.2.4",
+    "eslint": "^9",
+    "eslint-config-next": "^15.5.12",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
