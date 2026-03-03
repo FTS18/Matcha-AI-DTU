@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SplashScreen } from "@/components/layout/SplashScreen";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AdminProvider } from "@/contexts/AdminContext";
 import { env } from "@/lib/env";
 import "./globals.css";
 
@@ -49,14 +50,16 @@ export default function RootLayout({
       <head />
       <body suppressHydrationWarning className={`${bebas.variable} ${barlow.variable} ${dmMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary`}>
         <AuthProvider>
-          <SplashScreen />
-          <div className="flex-1 flex flex-col relative w-full">
-            <Navbar />
-            <main className="flex-1 flex flex-col items-stretch w-full relative z-10">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <AdminProvider>
+            <SplashScreen />
+            <div className="flex-1 flex flex-col relative w-full">
+              <Navbar />
+              <main className="flex-1 flex flex-col items-stretch w-full relative z-10">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </AdminProvider>
         </AuthProvider>
       </body>
     </html>

@@ -29,6 +29,8 @@ export interface VideoPlayerProps {
   seekFnRef?: React.MutableRefObject<(t: number) => void>;
   initialTeamColors?: number[][] | null;
   trackingData?: TrackFrame[] | null;
+  /** Optional ad/sponsor image shown bottom-left on all videos */
+  adOverlayUrl?: string | null;
 }
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
@@ -89,7 +91,7 @@ function toRgba(rgb: number[], alpha = 0.85) {
 type ClipMode = { type: "main" } | { type: "clip"; idx: number; url: string; highlight: Highlight };
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
-  src, events, highlights, onTimeUpdate, seekFnRef, initialTeamColors, trackingData,
+  src, events, highlights, onTimeUpdate, seekFnRef, initialTeamColors, trackingData, adOverlayUrl,
 }, ref) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const vidRef = useRef<HTMLVideoElement>(null);
@@ -122,6 +124,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
+  const [adDismissed, setAdDismissed] = useState(false);
+  const [showCaptions, setShowCaptions] = useState(true);
+  const [playerSize, setPlayerSize] = useState({ w: 0, h: 0 });
   const [toast, setToast] = useState<string | null>(null);
   const [modelState, setModelState] = useState<"loading" | "ready" | "error">("loading");
   const [clipMode, setClipMode] = useState<ClipMode>({ type: "main" });
@@ -304,6 +309,18 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
     return () => document.removeEventListener("fullscreenchange", onFS);
   }, []);
 
+  // Track player container size so ad overlay stays proportional
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0]!.contentRect;
+      setPlayerSize({ w: width, h: height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Keyboard
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -335,6 +352,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   useEffect(() => {
     if (seekFnRef) seekFnRef.current = seekTo;
   }, [seekTo, seekFnRef]);
+
+  // Reset dismiss state whenever a new ad is set
+  useEffect(() => { setAdDismissed(false); }, [adOverlayUrl]);
 
   // Seek bar interaction
   const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
@@ -396,6 +416,47 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
           style={{ width: "100%", height: "100%" }}
         />
 
+        {/* Ad / sponsor overlay — bottom-left, Google-ad style with dismiss X */}
+        {adOverlayUrl && !adDismissed && (
+          <div
+            className="absolute z-20 select-none"
+            style={{
+              bottom: playerSize.h > 0 ? Math.round(playerSize.h * 0.14) : 56,
+              left:   playerSize.w > 0 ? Math.round(playerSize.w * 0.015) : 12,
+            }}
+          >
+            {/* "Ad" micro-label */}
+            <span className="absolute -top-3.5 left-0 text-[8px] font-medium text-white/50 uppercase tracking-widest leading-none">
+              Ad
+            </span>
+            {/* Ad image — capped at 9% player height, 11% player width */}
+            <div className="bg-zinc-900 rounded-md p-1 shadow-xl border border-white/10">
+              <img
+                src={adOverlayUrl}
+                alt="sponsor"
+                draggable={false}
+                style={{
+                  maxHeight: playerSize.h > 0 ? Math.round(playerSize.h * 0.09) : 48,
+                  maxWidth:  playerSize.w > 0 ? Math.round(playerSize.w * 0.11) : 80,
+                  width: "auto",
+                  height: "auto",
+                  display: "block",
+                }}
+                className="object-contain rounded"
+              />
+            </div>
+            {/* Dismiss button — top-right corner, Google-ad style */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setAdDismissed(true); }}
+              className="absolute -top-2 -right-2 size-4 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-white/20 flex items-center justify-center transition-colors"
+              title="Close ad"
+            >
+              <span className="text-[9px] text-white/80 hover:text-white leading-none select-none">✕</span>
+            </button>
+          </div>
+        )}
+
         {/* Buffering spinner */}
         {buffering && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -420,19 +481,23 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
           )}
         </AnimatePresence>
 
-        {/* Event toast */}
+        {/* ── Captions / Commentary bar ─────────────────────────────────── */}
         <AnimatePresence>
-          {toast && (
+          {toast && showCaptions && (
             <motion.div
-              initial={{ y: -20, opacity: 0, x: "-50%" }}
-              animate={{ y: 0, opacity: 1, x: "-50%" }}
-              exit={{ y: -20, opacity: 0, x: "-50%" }}
-              className="absolute top-4 left-1/2 z-30 max-w-sm
-                         bg-zinc-900/90 backdrop-blur-md border border-white/10
-                         text-white text-sm px-5 py-2.5 rounded-full text-center shadow-2xl tracking-wide"
+              key={toast}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-xl pointer-events-none"
             >
-              <span className="text-primary font-bold mr-2 uppercase text-xs tracking-wider">Event</span>
-              {toast}
+              <div className="bg-zinc-950 border border-white/10 rounded-lg px-5 py-2.5 shadow-2xl flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 text-[9px] font-black uppercase tracking-widest bg-primary text-black px-1.5 py-0.5 rounded leading-tight">
+                  LIVE
+                </span>
+                <p className="text-white text-sm leading-snug font-medium">{toast}</p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -474,6 +539,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
                 >
                   <span className={`size-1.5 rounded-full ${showTracking ? "bg-primary shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "bg-zinc-500"}`} />
                   Tracking {showTracking ? "On" : "Off"}
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); setShowCaptions(v => !v); }}
+                  className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 border ${showCaptions ? "bg-primary/20 text-primary border-primary/40" : "bg-black/50 text-white/50 border-white/10 hover:bg-black/80 hover:text-white/80"}`}
+                  title="Toggle captions"
+                >
+                  CC
                 </button>
               </div>
             </motion.div>

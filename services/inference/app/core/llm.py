@@ -260,8 +260,13 @@ def analyze_frame_with_vision(frame: np.ndarray, timestamp: float, context: str 
     return analyze_frames_batch([(frame, timestamp)])[0]
 
 def generate_commentary(event_type, final_score, timestamp, duration, context_events=None, language="english"):
-    minute   = max(1, int(timestamp / 60))
-    late         = duration > 0 and (timestamp / duration) > 0.85
+    minute = max(1, int(timestamp / 60))
+    late   = duration > 0 and (timestamp / duration) > 0.85
+
+    # ── Fast path: quota gone → skip Gemini entirely, use fallback immediately ──
+    if _quota_exhausted:
+        return _fallback_commentary(event_type, minute, late)
+
     energy   = "HIGH INTENSITY" if final_score >= 7.5 else ("MODERATE" if final_score >= 5 else "low key")
     late_str = "in the dying minutes (CRUCIAL late-game moment!)" if late else f"at minute {minute}"
     ctx_str  = ""
@@ -290,25 +295,50 @@ def generate_commentary(event_type, final_score, timestamp, duration, context_ev
             if text:
                 return text
         except Exception as e:
-            logger.warning(f"Gemini commentary error: {e}")
+            logger.warning(f"Gemini commentary failed, using fallback: {e}")
 
-    # ── Fallback: generate a simple template commentary so pipeline never blocks ──
+    # ── Fallback: template commentary so pipeline never stalls ──
     return _fallback_commentary(event_type, minute, late)
 
 
 def _fallback_commentary(event_type: str, minute: int, late: bool) -> str:
-    """Template-based commentary when Gemini is unavailable."""
+    """Template-based commentary when Gemini is unavailable. Picks randomly from multiple options."""
+    import random
     _TEMPLATES = {
-        "GOAL":        "And it's a GOAL! Minute {m}! The ball hits the back of the net and the crowd erupts!",
-        "SAVE":        "What a SAVE at minute {m}! The keeper stretches to deny what looked like a certain goal!",
-        "TACKLE":      "Crunching tackle at minute {m}! A perfectly timed challenge wins the ball back!",
-        "FOUL":        "The referee blows the whistle at minute {m}! That's a foul and the free kick is awarded!",
-        "CELEBRATION": "The players are celebrating at minute {m}! Pure joy on the pitch!",
+        "GOAL": [
+            "GOOOAL! Minute {m}! The ball crashes into the back of the net and the stadium erupts! What a moment — the build-up was perfect, the finish was clinical. Pure footballing magic right there!",
+            "IT'S IN! Minute {m}! A stunning strike finds the corner of the net! The goalkeeper had no chance — that was an absolutely unstoppable effort. The crowd goes absolutely wild!",
+            "AND THAT IS A GOAL! Minute {m}! The move cuts right through the defence, the finish is inch-perfect, and the net bulges! Extraordinary football — the attacking side will absolutely love that!",
+        ],
+        "SAVE": [
+            "WHAT A SAVE! Minute {m}! The goalkeeper reads it perfectly and throws themselves full stretch to tip it wide! That was heading straight for the top corner — an absolutely world-class stop!",
+            "Denied! Minute {m}! The keeper gets every part of that effort — a breathtaking reaction save! The striker must be holding their head in disbelief. Goalkeeping at its very finest!",
+            "Incredible reflexes at minute {m}! The ball is flying into the net but the goalkeeper dives full length and somehow claws it away! That could be the save of the match — absolutely remarkable!",
+        ],
+        "TACKLE": [
+            "WHAT A CHALLENGE! Minute {m}! The defender times it to absolute perfection, winning the ball cleanly and stopping the attack dead in its tracks! Magnificent defending!",
+            "Crunching tackle at minute {m}! The midfielder throws themselves into the challenge — ball won, danger cleared! The crowd appreciates that kind of commitment and desire!",
+            "Perfectly timed intervention at minute {m}! The defender reads the play early, slides in, and wins it fair and square! That's the kind of gritty defending that wins matches!",
+        ],
+        "FOUL": [
+            "The referee's whistle stops play at minute {m}! The challenge was reckless — the official has no hesitation in awarding the free kick. The attacking side will be looking for their set-piece specialists!",
+            "Free kick awarded at minute {m}! The defender goes in hard but gets the player rather than the ball. The referee points to the spot — well, points to where the foul occurred — and the crowd reacts!",
+            "Play halted at minute {m}! The referee signals a foul — a cynical challenge to stop a dangerous counter-attack. This could be a golden set-piece opportunity for the attacking team!",
+        ],
+        "CELEBRATION": [
+            "The players are mobbing each other at minute {m}! Pure unbridled joy on the pitch — arms everywhere, shirts pulled, the bench erupts! These are the moments that football is all about!",
+            "Incredible scenes at minute {m}! The whole squad rushes onto the pitch to celebrate — this clearly means everything to them. The fans are absolutely delirious in the stands!",
+            "What emotion at minute {m}! Players embracing, jumping on each other, the coaching staff going wild on the touchline! Football at its most beautiful — raw, passionate, unforgettable!",
+        ],
+        "HIGHLIGHT": [
+            "A key moment at minute {m}! The play bursts into life — quick thinking, sharp movement, real quality on the ball. This is the kind of moment that decides matches at the highest level!",
+            "Minute {m} and something special happens! The pace and intensity picks right up — both sides sensing an opportunity. This is exactly the kind of football the crowd came here to see!",
+        ],
     }
-    tmpl = _TEMPLATES.get(event_type, "An exciting moment unfolds at minute {m}!")
-    text = tmpl.format(m=minute)
+    templates = _TEMPLATES.get(event_type, _TEMPLATES["HIGHLIGHT"])
+    text = random.choice(templates).format(m=minute)
     if late:
-        text += " A crucial moment in the dying minutes of the match!"
+        text += " And this comes in the dying minutes — it could not be more dramatic!"
     return text
 
 
@@ -318,9 +348,18 @@ def generate_commentary_parallel(scored_events: list, duration: float, language:
     Generate commentary for ALL events in parallel via a thread pool.
     Workers respect _GEMINI_SEMAPHORE so we never burst the quota.
     Returns the same list with 'commentary' keys filled in-place.
-    Has a 60s overall timeout to prevent pipeline from hanging.
+    Falls back to template commentary instantly when Gemini quota is exhausted.
     """
     if not scored_events:
+        return scored_events
+
+    # ── Fast path: quota already gone → fill all with fallback, no threads needed ──
+    if _quota_exhausted:
+        logger.info("Commentary: Gemini quota exhausted — using template fallback for all events")
+        for ev in scored_events:
+            minute = max(1, int(ev["timestamp"] / 60))
+            late = duration > 0 and (ev["timestamp"] / duration) > 0.85
+            ev["commentary"] = _fallback_commentary(ev["type"], minute, late)
         return scored_events
 
     def _one(args):
@@ -330,12 +369,23 @@ def generate_commentary_parallel(scored_events: list, duration: float, language:
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_one, (i, ev)): i for i, ev in enumerate(scored_events)}
-        for fut in as_completed(futures, timeout=60):
-            try:
-                idx, commentary = fut.result(timeout=30)
-                scored_events[idx]["commentary"] = commentary
-            except Exception as e:
-                logger.warning(f"Commentary worker failed: {e}")
+        try:
+            for fut in as_completed(futures, timeout=60):
+                try:
+                    idx, commentary = fut.result(timeout=30)
+                    scored_events[idx]["commentary"] = commentary
+                except Exception as e:
+                    logger.warning(f"Commentary worker failed: {e}")
+        except Exception:
+            # as_completed timed out — fill any missing commentary with fallback
+            logger.warning("Commentary parallel timeout — filling remaining events with fallback")
+
+    # ── Guarantee every event has a commentary field ──────────────────────────
+    for ev in scored_events:
+        if not ev.get("commentary"):
+            minute = max(1, int(ev["timestamp"] / 60))
+            late = duration > 0 and (ev["timestamp"] / duration) > 0.85
+            ev["commentary"] = _fallback_commentary(ev["type"], minute, late)
 
     return scored_events
 

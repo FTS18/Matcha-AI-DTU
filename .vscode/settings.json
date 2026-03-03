@@ -11,5 +11,6 @@
   "python.analysis.extraPaths": [
     "${workspaceFolder}/services/inference/app",
     "${workspaceFolder}/services/inference"
-  ]
+  ],
+  "python-envs.pythonProjects": []
 }

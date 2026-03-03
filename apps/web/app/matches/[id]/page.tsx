@@ -29,6 +29,7 @@ import {
   STATUS_CONFIG, PIPELINE_STAGES,
 } from "@matcha/shared";
 import { createApiClient } from "@matcha/shared";
+import { useAdmin } from "@/contexts/AdminContext";
 
 // Web-only props on EVENT_CONFIG (icon, bg, border) — extend the shared logic
 const THEME_MAP: Record<string, { bg: string; border: string; color: string }> = {
@@ -197,6 +198,7 @@ function DeleteModal({ onConfirm, onCancel, loading }: { onConfirm: () => void; 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { isAdmin, adOverlayUrl } = useAdmin();
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeHighlight, setActiveHighlight] = useState<Highlight | null>(null);
@@ -690,6 +692,7 @@ export default function MatchDetailPage() {
                   trackingData={mergedTrackingData}
                   seekFnRef={videoSeekRef}
                   onTimeUpdate={handleTimeUpdate}
+                  adOverlayUrl={adOverlayUrl}
                 />
 
                 <div className="bg-muted/30 border border-border px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
@@ -865,38 +868,43 @@ export default function MatchDetailPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {/* Accept */}
-                          <button
-                            onClick={() => handleAcceptHighlight(h.id)}
-                            title="Accept highlight"
-                            className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
-                              isAccepted
-                                ? "text-emerald-400 bg-emerald-400/15"
-                                : "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-400/10"
-                            }`}
-                          >
-                            <CheckCircle className="size-4" />
-                          </button>
-                          {/* Reject */}
-                          <button
-                            onClick={() => handleRejectHighlight(h.id)}
-                            title="Reject & remove highlight"
-                            className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer focus:outline-none"
-                          >
-                            <XCircle className="size-4" />
-                          </button>
-                          {/* Edit */}
-                          <button
-                            onClick={() => isEditing ? cancelEditHighlight() : startEditHighlight(h)}
-                            title="Edit timestamps & event type"
-                            className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
-                              isEditing
-                                ? "text-amber-400 bg-amber-400/15"
-                                : "text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10"
-                            }`}
-                          >
-                            {isEditing ? <X className="size-4" /> : <Pencil className="size-4" />}
-                          </button>
+                          {/* Admin-only: Accept / Reject / Edit */}
+                          {isAdmin && (
+                            <>
+                              {/* Accept */}
+                              <button
+                                onClick={() => handleAcceptHighlight(h.id)}
+                                title="Accept highlight"
+                                className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
+                                  isAccepted
+                                    ? "text-emerald-400 bg-emerald-400/15"
+                                    : "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-400/10"
+                                }`}
+                              >
+                                <CheckCircle className="size-4" />
+                              </button>
+                              {/* Reject */}
+                              <button
+                                onClick={() => handleRejectHighlight(h.id)}
+                                title="Reject & remove highlight"
+                                className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer focus:outline-none"
+                              >
+                                <XCircle className="size-4" />
+                              </button>
+                              {/* Edit */}
+                              <button
+                                onClick={() => isEditing ? cancelEditHighlight() : startEditHighlight(h)}
+                                title="Edit timestamps & event type"
+                                className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
+                                  isEditing
+                                    ? "text-amber-400 bg-amber-400/15"
+                                    : "text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10"
+                                }`}
+                              >
+                                {isEditing ? <X className="size-4" /> : <Pencil className="size-4" />}
+                              </button>
+                            </>
+                          )}
                           <ScoreBadge score={h.score} />
                         </div>
                       </div>
@@ -914,8 +922,8 @@ export default function MatchDetailPage() {
                         />
                       </div>
 
-                      {/* Editable timestamp / event type form */}
-                      {isEditing ? (
+                      {/* Editable timestamp / event type form — admin only */}
+                      {isAdmin && isEditing ? (
                         <div className="space-y-2 mb-3 p-3 bg-muted/50 border border-border rounded">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Edit Timestamps & Type</p>
                           <div className="grid grid-cols-2 gap-2">
