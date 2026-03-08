@@ -457,9 +457,8 @@ import tempfile
 
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://localhost:4000/api/v1")
 
-# Use YOLOv8s-pose for person keypoints, and tiny model for ball
-# Downloads automatically on first run (~22MB)
-model = YOLO("yolov8s-pose.pt")
+# Use YOLOv8n-pose for much faster CPU inference (Nano model)
+model = YOLO("yolov8n-pose.pt")
 ball_model = YOLO("yolov8n.pt")
 
 # ── COCO classes to track for visualization ──────────────────────────────────
@@ -1366,10 +1365,11 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
                 window_diffs = []
 
             # ── Progress update ──────────────────────────────────────────────
-            if processed_count % 15 == 0 and total_frames > 0:
+            if processed_count % 5 == 0 and total_frames > 0:
                 try:
                     # Frame processing = 0-60% of total progress
                     frame_pct = int((frame_count / total_frames) * 60)
+                    logger.info(f"Processing frame {frame_count}/{total_frames} ({frame_pct}%)")
                     requests.post(
                         f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
                         json={"progress": min(frame_pct, 60), "stage": "scanning"},
@@ -1977,7 +1977,7 @@ def analyze_video(video_path: str, match_id: str, start_time: Optional[float] = 
             "teamColors":    convert_numpy(team_colors),   # [[R,G,B],[R,G,B]] team0 / team1
             "heatmapUrl":    heatmap_url,
             "topSpeedKmh":   round(float(top_speed_kmh), 1),
-            "videoUrl":      f"http://localhost:4000/uploads/{Path(original_video_path).name}",
+            "videoUrl":      f"/uploads/{Path(original_video_path).name}",
             "goalpostDetections": convert_numpy(goalpost_detections),  # Spatial awareness data
             "advancedStats": convert_numpy(advanced_stats),  # Performance & Tactics stats
             # ── PHASE 2 Analysis Data ────────────────────────────────────────

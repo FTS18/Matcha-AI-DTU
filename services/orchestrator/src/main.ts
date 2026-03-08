@@ -38,6 +38,13 @@ async function bootstrap() {
       exposedHeaders: ['Content-Range', 'X-Content-Duration'],
     });
 
+    // Global headers for Cross-Origin Isolation (COEP/CORP/COOP)
+    app.use((req: any, res: any, next: any) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', '*'); // Redundant but safe for static
+      next();
+    });
+
     // Global validation pipe — rejects malformed payloads with HTTP 400
     app.useGlobalPipes(
       new ValidationPipe({

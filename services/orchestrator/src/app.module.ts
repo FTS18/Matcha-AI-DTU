@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
+import * as path from 'path';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,7 +18,7 @@ import { AuthModule } from './auth/auth.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
 
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', '..', 'uploads'),
+      rootPath: path.join(process.cwd(), '..', '..', 'uploads'),
       serveRoot: '/uploads',
       serveStaticOptions: {
         setHeaders: (res) => {

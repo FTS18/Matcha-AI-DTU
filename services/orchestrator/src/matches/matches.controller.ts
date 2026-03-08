@@ -131,17 +131,17 @@ export class MatchesController {
     ) {
       throw new BadRequestException('start_time must be less than end_time');
     }
-    if (body.end_time !== undefined && body.end_time > 10800) {
-      throw new BadRequestException(
-        'end_time cannot exceed 3 hours (10800 seconds)',
-      );
-    }
     return this.matchesService.createFromYoutube(
       body.url,
       req.user.userId,
       body.start_time,
       body.end_time,
     );
+  }
+
+  @Get('stats')
+  async getStats() {
+    return this.matchesService.getGlobalStats();
   }
 
   @UseGuards(OptionalJwtAuthGuard)

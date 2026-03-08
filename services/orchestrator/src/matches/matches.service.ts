@@ -56,7 +56,7 @@ export class MatchesService {
     }
 
     // Use the actual filesystem path (works for native Windows execution)
-    const publicUrl = `http://localhost:4000/uploads/${fileName}`; // Mock public URL
+    const publicUrl = `/uploads/${fileName}`;
 
     const match = await this.prisma.match.create({
       data: {
@@ -475,5 +475,24 @@ export class MatchesService {
       `Highlight ${highlightId} rejected/deleted from match ${matchId}`,
     );
     return { ok: true };
+  }
+
+  async getGlobalStats() {
+    const [matchesCount, eventsCount, highlightsCount, durationAgg] = await Promise.all([
+      this.prisma.match.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.event.count(),
+      this.prisma.highlight.count(),
+      this.prisma.match.aggregate({
+        _sum: { duration: true },
+        where: { status: 'COMPLETED' },
+      }),
+    ]);
+
+    return {
+      totalMatches: matchesCount,
+      totalEvents: eventsCount,
+      totalHighlights: highlightsCount,
+      totalDuration: durationAgg._sum.duration || 0,
+    };
   }
 }

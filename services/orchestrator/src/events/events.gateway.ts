@@ -10,7 +10,8 @@ import { WsEvents } from '@matcha/shared';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: true,
+    credentials: true,
   },
 })
 export class EventsGateway {

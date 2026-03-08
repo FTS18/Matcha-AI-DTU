@@ -30,6 +30,9 @@ export function createApiClient(baseUrl: string) {
     getMatch: (id: string): Promise<MatchDetail> =>
       fetchWithRetry(`${apiBase}/matches/${id}`, { headers: getAuthHeaders() }).then((r) => r.json()),
 
+    getStats: (): Promise<{ totalMatches: number; totalEvents: number; totalHighlights: number; totalDuration: number }> =>
+      fetchWithRetry(`${apiBase}/matches/stats`, { headers: getAuthHeaders() }).then((r) => r.json()),
+
     deleteMatch: (id: string): Promise<Response> =>
       fetchWithRetry(`${apiBase}/matches/${id}`, { method: "DELETE", headers: getAuthHeaders() }),
 

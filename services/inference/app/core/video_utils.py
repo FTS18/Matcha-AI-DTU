@@ -328,7 +328,7 @@ def create_highlight_reel(
             if _sa_process and _sa_available and _sa_available():
                 v_clip = _annotate_clip_with_soccer_analysis(v_clip, output_dir, match_id, i)
             cfg = EVENT_CONFIG.get(event_type, EVENT_CONFIG["HIGHLIGHT"])
-            pub_url = f"/uploads/clip_{match_id}_{i}{ar_tag}.mp4"
+            pub_url = f"/uploads/{os.path.basename(v_clip)}"
             clip_public_urls.append(pub_url)
             clip_details.append({
                 "video": v_clip,

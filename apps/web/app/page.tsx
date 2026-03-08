@@ -1,20 +1,40 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { VideoUpload, MatchDashboard } from "@/components/dynamic-sections";
 import { useAuth } from "@/contexts/AuthContext";
+import { client } from "@/lib/api";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [stats, setStats] = useState({
+    analyses: "00",
+    insights: "00",
+    footage: "00h"
+  });
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user) {
+      client.getStats().then((data: { totalMatches: number; totalEvents: number; totalHighlights: number; totalDuration: number }) => {
+        const hours = (data.totalDuration / 3600).toFixed(1);
+        setStats({
+          analyses: String(data.totalMatches).padStart(2, '0'),
+          insights: String(data.totalEvents).padStart(2, '0'),
+          footage: `${hours}h`
+        });
+      }).catch((err: Error) => {
+        console.error("Failed to fetch global stats:", err);
+      });
+    }
+  }, [user]);
 
   if (loading || !user) {
     return (
@@ -66,9 +86,9 @@ export default function Home() {
           >
             <div className="absolute inset-0 bg-linear-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             {[
-              { n: "09", label: "EVENTS" },
-              { n: "04", label: "REELS" },
-              { n: "∞",  label: "SAVED" },
+              { n: stats.analyses, label: "ANALYSES" },
+              { n: stats.insights, label: "INSIGHTS" },
+              { n: stats.footage,  label: "FOOTAGE" },
             ].map((s) => (
               <div key={s.label} className="text-center px-4 sm:px-0 sm:pr-16 last:pr-0 border-r last:border-r-0 border-border/40 relative z-10 flex-1 sm:flex-none">
                 <div className="font-display leading-none text-[28px] sm:text-[54px] text-primary drop-shadow-[0_0_12px_rgba(var(--color-primary),0.5)]">{s.n}</div>

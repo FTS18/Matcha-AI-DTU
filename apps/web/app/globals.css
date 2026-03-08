@@ -36,10 +36,15 @@
   --color-card-foreground: oklch(92% 0.01 264);
 
   /* Fonts */
-  --font-display: var(--font-bebas);
-  --font-heading: var(--font-barlow);
-  --font-mono: var(--font-dm-mono);
-  --font-sans: var(--font-barlow);
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-heading: 'Barlow Condensed', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'Barlow Condensed', sans-serif;
+
+  /* Legacy variable mappings (backwards compatibility) */
+  --font-bebas: 'Bebas Neue', sans-serif;
+  --font-barlow: 'Barlow Condensed', sans-serif;
+  --font-dm-mono: 'DM Mono', monospace;
 }
 
 :root {
