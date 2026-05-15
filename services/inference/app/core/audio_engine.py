@@ -2,6 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def calculate_dynamic_audio_volumes(motion_score: float, emotion_score: float) -> dict:
     """
     Calculate audio volumes dynamically based on match intensity.

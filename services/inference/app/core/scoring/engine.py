@@ -19,6 +19,7 @@ EVENT_WEIGHTS = {
     "OFFSIDE": 2.5,
 }
 
+
 def time_context_weight(timestamp: float, duration: float) -> float:
     """Late-game moments carry more weight."""
     if duration <= 0:
@@ -36,30 +37,44 @@ def time_context_weight(timestamp: float, duration: float) -> float:
         return 0.60  # around half-time
     return 0.65  # first half
 
-def score_goal(motion_score: float, timestamp: float, duration: float, confidence: float) -> float:
+
+def score_goal(
+    motion_score: float, timestamp: float, duration: float, confidence: float
+) -> float:
     """Specific scoring logic for goals."""
-    base_score = compute_context_score("GOAL", motion_score, timestamp, duration, confidence)
+    base_score = compute_context_score(
+        "GOAL", motion_score, timestamp, duration, confidence
+    )
     if duration > 0 and (timestamp / duration) > 0.85:
         return round(min(base_score * 1.2, 10.0), 2)  # Extra bump for late goals
     return base_score
 
-def score_save(motion_score: float, timestamp: float, duration: float, confidence: float) -> float:
+
+def score_save(
+    motion_score: float, timestamp: float, duration: float, confidence: float
+) -> float:
     """Specific scoring logic for saves."""
-    base_score = compute_context_score("SAVE", motion_score, timestamp, duration, confidence)
+    base_score = compute_context_score(
+        "SAVE", motion_score, timestamp, duration, confidence
+    )
     if duration > 0 and (timestamp / duration) < 0.08:
         return round(min(base_score * 1.3, 10.0), 2)  # Frantic early-game save bonus
     return base_score
 
-def score_foul(motion_score: float, timestamp: float, duration: float, confidence: float) -> float:
+
+def score_foul(
+    motion_score: float, timestamp: float, duration: float, confidence: float
+) -> float:
     """Specific scoring logic for fouls."""
     return compute_context_score("FOUL", motion_score, timestamp, duration, confidence)
 
+
 def compute_context_score(
-    event_type: str, 
-    motion_score: float, 
-    timestamp: float, 
-    duration: float, 
-    confidence: float
+    event_type: str,
+    motion_score: float,
+    timestamp: float,
+    duration: float,
+    confidence: float,
 ) -> float:
     """
     Core contextual scoring engine.
@@ -67,14 +82,18 @@ def compute_context_score(
     ew = EVENT_WEIGHTS.get(event_type, 4.0) / 10.0
     audio = min(motion_score * 1.3, 1.0)
     tw = time_context_weight(timestamp, duration)
-    
+
     base = (ew * W1) + (audio * W2) + (motion_score * W3) + (tw * W4)
     score = base * (0.5 + 0.5 * confidence)
-    
+
     # Legacy logic maintained for GOAL and SAVE in the base function
     if duration > 0 and (timestamp / duration) > 0.85 and event_type == "GOAL":
         score *= 2.0
-    if duration > 0 and (timestamp / duration) < 0.08 and event_type in ("SAVE", "TACKLE"):
+    if (
+        duration > 0
+        and (timestamp / duration) < 0.08
+        and event_type in ("SAVE", "TACKLE")
+    ):
         score *= 1.3
-        
+
     return round(min(score * 10.0, 10.0), 2)

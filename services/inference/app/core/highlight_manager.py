@@ -2,12 +2,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def select_highlights(scored_events, duration, top_n=5, clip_secs=30.0):
     """
     Top-N non-overlapping highlights, spread across the full video.
     Two rules:
     1. No time-window overlap between clips.
-    2. Clip centres must be at least 15% of duration apart (prevents same-scene 
+    2. Clip centres must be at least 15% of duration apart (prevents same-scene
     from different YOLO frames appearing twice).
     """
     if not scored_events:
@@ -48,6 +49,7 @@ def select_highlights(scored_events, duration, top_n=5, clip_secs=30.0):
 
     return highlights
 
+
 def group_related_events(scored_events: list, min_gap_secs: float = 15.0) -> list:
     """
     Group related events (e.g., build-up + goal) for better narrative flow.
@@ -74,6 +76,7 @@ def group_related_events(scored_events: list, min_gap_secs: float = 15.0) -> lis
         grouped.append(event_copy)
 
     return grouped
+
 
 def select_highlights_with_narrative(
     scored_events: list,

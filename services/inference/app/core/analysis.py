@@ -3,32 +3,67 @@ import logging
 import sys
 import requests
 import os
-
-# Ensure ~/bin is on PATH for ffmpeg and other local binaries
-_home_bin = os.path.join(os.path.expanduser("~"), "bin")
-if _home_bin not in os.environ.get("PATH", ""):
-    os.environ["PATH"] = _home_bin + os.pathsep + os.environ.get("PATH", "")
-
 import numpy as np
 import torch
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Union
-from collections import Counter
-from collections import deque
+from collections import Counter, deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Local modular imports
+from app.core.frame_cache import FrameCache
+from app.core.vision_validator import (
+    validate_candidate_with_fallback,
+    find_motion_peaks,
+)
+from app.core.spatial_analysis import (
+    smooth_ball_trajectory,
+    predict_ball_trajectory,
+    analyze_team_formation,
+)
+from app.core.team_detector import _crop_jersey, _dominant_colour, _cluster_teams
+from app.core.downloader import _download_youtube_video as _download_youtube_video_base
+from app.core.llm import (
+    analyze_frame_with_vision,
+    analyze_frames_batch,
+    generate_commentary,
+    generate_commentary_parallel,
+    generate_match_summary,
+    _get_gemini,
+)
+from app.core.tts import tts_generate, get_tts_available as _get_tts
+from app.core.video_utils import (
+    generate_silent_audio as _generate_silent_audio,
+    create_highlight_reel,
+    precompress_video as _precompress_video,
+)
+from app.core.scoring.engine import (
+    compute_context_score,
+    score_goal,
+    score_save,
+    score_foul,
+)
+from app.core.audio_engine import calculate_dynamic_audio_volumes
+from app.core.highlight_manager import (
+    select_highlights,
+    select_highlights_with_narrative,
+    group_related_events,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── Base paths (work for both Docker and native Windows) ─────────────────────
-# When running in Docker: /app is the workdir
-# When running natively: services/inference is the workdir
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # services/inference/
-UPLOADS_DIR = BASE_DIR.parent.parent / "uploads"  # workspace/uploads/
-MUSIC_DIR = BASE_DIR / "app" / "music"  # services/inference/app/music/
+# Ensure ~/bin is on PATH
+_home_bin = os.path.join(os.path.expanduser("~"), "bin")
+if _home_bin not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _home_bin + os.pathsep + os.environ.get("PATH", "")
 
-# Ensure directories exist
+# Base paths
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+UPLOADS_DIR = BASE_DIR.parent.parent / "uploads"
+MUSIC_DIR = BASE_DIR / "app" / "music"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 MUSIC_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -68,237 +103,33 @@ CONFIG = {
     "MAX_COMMENTARY_CHARS": 1000,
     "MAX_HIGHLIGHT_COMMENTARY_CHARS": 500,
     "MAX_EVENTTYPE_CHARS": 50,
-    # ── Goal Detection Parameters ─────────────────────────────────────────
     "GOAL_DETECTION_ENABLED": True,
-    "GOAL_DETECTION_MIN_FRAMES": 3,  # Frames ball must be in goal area
-    "GOAL_DETECTION_MIN_SIZE": 10,  # Min ball bbox size in pixels
-    "GOAL_DETECTION_MAX_SIZE": 200,  # Max ball bbox size in pixels
-    "GOAL_DETECTION_CONFIDENCE_THRESHOLD": 0.5,  # Goal confidence threshold
-    # ── Roboflow API Settings ─────────────────────────────────────────────
+    "GOAL_DETECTION_MIN_FRAMES": 3,
+    "GOAL_DETECTION_MIN_SIZE": 10,
+    "GOAL_DETECTION_MAX_SIZE": 200,
+    "GOAL_DETECTION_CONFIDENCE_THRESHOLD": 0.5,
     "ROBOFLOW_API_KEY": os.getenv("ROBOFLOW_API_KEY"),
     "ROBOFLOW_WORKSPACE": os.getenv("ROBOFLOW_WORKSPACE", "matcha-ai"),
     "ROBOFLOW_PROJECT": os.getenv("ROBOFLOW_PROJECT", "soccer-ball-detection"),
     "ROBOFLOW_VERSION": int(os.getenv("ROBOFLOW_VERSION", "1")),
-    # ── Live Stream Parameters ────────────────────────────────────────────
-    "STREAM_BUFFER_SIZE": 15,  # Seconds to buffer before checking for events
-    "STREAM_MAX_IDLE_SECS": 300,  # Auto-stop after 5 mins of no frames
-    "LIVE_EMIT_INTERVAL_SECS": 1.0,  # How often to update progress/status
-    # ── Performance Optimization (NEW) ────────────────────────────────────
-    "ENABLE_GPU_ACCELERATION": True,  # Use CUDA/GPU for YOLO if available
-    "PARALLEL_WORKERS": 4,  # Number of parallel frame processing threads
-    "BATCH_YOLO_SIZE": 8,  # Batch frames for YOLO inference
-    "SMART_FRAME_SKIP": True,  # Skip low-motion frames intelligently
-    "MOTION_CACHE_ENABLED": True,  # Cache motion scores to avoid recalculation
-    "ENABLE_INFERENCE_CACHING": True,  # Cache YOLO results for similar frames
-    "CACHE_SIMILARITY_THRESHOLD": 0.95,  # Frame similarity for cache hits (0.0-1.0)
-    # ── Phase 2 Optimizations ────────────────────────────────────────────
-    "ENHANCED_BALL_TRACKING": True,  # Kalman filter + trajectory prediction
-    "BALL_SMOOTHING_WINDOW": 3,  # Frames for ball trajectory smoothing
-    "CONTEXT_AWARE_COMMENTARY": True,  # Gemini analysis of team formation & tactics
-    "DYNAMIC_AUDIO_MIXING": True,  # Auto-adjust volumes based on match intensity
-    "SMART_HIGHLIGHT_SELECTION": True,  # Narrative flow + deduplication
-    "HIGHLIGHT_NARRATIVE_CONTEXT": True,  # Group related events together
-    "MIN_EVENT_GAP_FOR_GROUPING": 15.0,  # Seconds to group events (build-up + goal)
+    "STREAM_BUFFER_SIZE": 15,
+    "STREAM_MAX_IDLE_SECS": 300,
+    "LIVE_EMIT_INTERVAL_SECS": 1.0,
+    "ENABLE_GPU_ACCELERATION": True,
+    "PARALLEL_WORKERS": 4,
+    "BATCH_YOLO_SIZE": 8,
+    "SMART_FRAME_SKIP": True,
+    "MOTION_CACHE_ENABLED": True,
+    "ENABLE_INFERENCE_CACHING": True,
+    "CACHE_SIMILARITY_THRESHOLD": 0.95,
+    "ENHANCED_BALL_TRACKING": True,
+    "BALL_SMOOTHING_WINDOW": 3,
+    "CONTEXT_AWARE_COMMENTARY": True,
+    "DYNAMIC_AUDIO_MIXING": True,
+    "SMART_HIGHLIGHT_SELECTION": True,
+    "HIGHLIGHT_NARRATIVE_CONTEXT": True,
+    "MIN_EVENT_GAP_FOR_GROUPING": 15.0,
 }
-
-# ── Heatmap & Speed analytics ───────────────────────────────────────────────
-try:
-    from app.core.heatmap import generate_heatmap, estimate_ball_speed
-    from app.core.performance_metrics import calculate_player_metrics
-    from app.core.tactical_engine import (
-        calculate_possession,
-        generate_tactical_radar,
-        calculate_dominance,
-    )
-
-    HEATMAP_AVAILABLE = True
-    logger.info("Heatmap & Tactical modules loaded ")
-except ImportError as e:
-    logger.warning(f"Heatmap/Tactical modules not available: {e}")
-    HEATMAP_AVAILABLE = False
-    generate_heatmap = None
-    estimate_ball_speed = None
-
-# ── Goal Detection (vision-based goal line crossing) ──────────────────────────
-try:
-    from app.core.goal_detection import GoalDetectionEngine
-
-    GOAL_DETECTION_AVAILABLE = True
-    logger.info("Goal Detection engine loaded ")
-except ImportError as e:
-    logger.warning(f"Goal Detection not available: {e}")
-    GOAL_DETECTION_AVAILABLE = False
-    GoalDetectionEngine = None
-
-# ── Goalpost Detection (for spatial awareness) ────────────────────────────────
-try:
-    from app.core.goalpost_detection import GoalpostDetector, GoalpostTracker
-
-    GOALPOST_DETECTION_AVAILABLE = True
-    logger.info("Goalpost Detection module loaded ")
-except ImportError as e:
-    logger.warning(f"Goalpost Detection not available: {e}")
-    GOALPOST_DETECTION_AVAILABLE = False
-    GoalpostDetector = None
-    GoalpostTracker = None
-
-# ── Scoreboard Detection (score tracking & goal verification) ─────────────────
-try:
-    from app.core.scoreboard_detector import ScoreboardDetector
-
-    SCOREBOARD_DETECTION_AVAILABLE = True
-    logger.info("Scoreboard Detection module loaded ")
-except ImportError as e:
-    logger.warning(f"Scoreboard Detection not available: {e}")
-    SCOREBOARD_DETECTION_AVAILABLE = False
-    ScoreboardDetector = None
-
-# ── Vision Transformers (Sateek Action Spotting) ───────────────────────────
-try:
-    from app.core.transformer_detector import TransformerActionSpotter
-    from app.core.dynamic_calibration import DynamicPitchCalibrator
-
-    TRANSFORMER_AVAILABLE = True
-    logger.info("Vision Transformer & Dynamic Calibrator loaded ")
-except ImportError as e:
-    logger.warning(f"Vision modules not available: {e}")
-    TRANSFORMER_AVAILABLE = False
-    TransformerActionSpotter = None
-    DynamicPitchCalibrator = None
-
-# ── SoccerNet (football-specific event detection) ────────────────────────────
-try:
-    from app.core.soccernet_detector import detect_football_events
-
-    SOCCERNET_AVAILABLE = True
-    logger.info("SoccerNet detector loaded ")
-except ImportError as e:
-    logger.warning(f"SoccerNet detector not available: {e}")
-    SOCCERNET_AVAILABLE = False
-    detect_football_events = None
-
-# ── CV Physics (YOLO-based heuristics) ───────────────────────────────────────
-try:
-    from app.core.cv_detector import detect_all as detect_cv_physics
-
-    CV_PHYSICS_AVAILABLE = True
-    logger.info("CV Physics detector loaded ")
-except ImportError as e:
-    logger.warning(f"CV Physics detector not available: {e}")
-    CV_PHYSICS_AVAILABLE = False
-    detect_cv_physics = None
-
-# ── Soccer Analysis (broadcast-quality overlays) ─────────────────────────────
-try:
-    from app.core.soccer_analysis import is_available as _sa_is_available
-
-    SOCCER_ANALYSIS_AVAILABLE = _sa_is_available()
-    if SOCCER_ANALYSIS_AVAILABLE:
-        logger.info("Soccer Analysis overlay engine loaded ")
-    else:
-        logger.warning(
-            "Soccer Analysis overlay: missing dependencies (supervision / scikit-learn)"
-        )
-except ImportError as e:
-    logger.warning(f"Soccer Analysis overlay not available: {e}")
-    SOCCER_ANALYSIS_AVAILABLE = False
-
-# ── YOLO ─────────────────────────────────────────────────────────────────────
-try:
-    from ultralytics import YOLO  # type: ignore
-    from ultralytics.nn.tasks import DetectionModel  # type: ignore
-
-    # PyTorch 2.6+ requires adding safe globals for model loading
-    if hasattr(torch.serialization, "add_safe_globals"):  # type: ignore
-        import torch.nn.modules.container
-        import torch.nn.modules.conv
-        import torch.nn.modules.batchnorm
-        import torch.nn.modules.activation
-        import torch.nn.modules.pooling
-        import torch.nn.modules.upsampling
-
-        torch.serialization.add_safe_globals(
-            [  # type: ignore
-                DetectionModel,
-                torch.nn.modules.container.Sequential,
-                torch.nn.modules.container.ModuleList,
-                torch.nn.modules.conv.Conv2d,
-                torch.nn.modules.batchnorm.BatchNorm2d,
-                torch.nn.modules.activation.SiLU,
-                torch.nn.modules.pooling.MaxPool2d,
-                torch.nn.modules.upsampling.Upsample,
-            ]
-        )
-except Exception as e:
-    logger.warning(f"Could not add safe globals: {e}")
-    from ultralytics import YOLO  # type: ignore
-
-from app.core.llm import (
-    analyze_frame_with_vision,
-    analyze_frames_batch,
-    generate_commentary,
-    generate_commentary_parallel,
-    generate_match_summary,
-    _get_gemini,
-)
-from app.core.tts import tts_generate, get_tts_available as _get_tts
-from app.core.video_utils import (
-    generate_silent_audio as _generate_silent_audio,
-    create_highlight_reel,
-    precompress_video as _precompress_video,
-)
-
-# ── Performance Optimization Utilities ────────────────────────────────────────
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import deque
-import hashlib
-
-
-class FrameCache:
-    """LRU cache for YOLO inference results to avoid redundant processing."""
-
-    def __init__(self, max_size: int = 100, similarity_threshold: float = 0.95):
-        self.cache = {}
-        self.order = deque(maxlen=max_size)
-        self.max_size = max_size
-        self.similarity_threshold = similarity_threshold
-        self.hits = 0
-        self.misses = 0
-
-    def _get_hash(self, frame: np.ndarray) -> str:
-        """Compute frame hash using the first few bytes."""
-        return hashlib.md5(
-            frame[::4, ::4].tobytes()
-        ).hexdigest()  # Sample every 4th pixel for speed
-
-    def get(self, frame: np.ndarray):
-        """Try to retrieve cached result for similar frame."""
-        frame_hash = self._get_hash(frame)
-        if frame_hash in self.cache:
-            self.hits += 1
-            return self.cache[frame_hash]
-        self.misses += 1
-        return None
-
-    def put(self, frame: np.ndarray, result):
-        """Cache the inference result."""
-        frame_hash = self._get_hash(frame)
-        if len(self.order) >= self.max_size and frame_hash not in self.cache:
-            oldest = self.order[0]
-            del self.cache[oldest]
-        self.cache[frame_hash] = result
-        self.order.append(frame_hash)
-
-    def stats(self):
-        total = self.hits + self.misses
-        hit_rate = (self.hits / total * 100) if total > 0 else 0
-        return {
-            "hits": self.hits,
-            "misses": self.misses,
-            "hit_rate": f"{hit_rate:.1f}%",
-            "size": len(self.cache),
-        }
-
 
 # Initialize frame cache
 _frame_cache = FrameCache(
@@ -330,172 +161,8 @@ def _frame_to_pil(frame):
     return f2p(frame)
 
 
-def validate_candidate_moment(
-    cap, timestamp: float, fps: float, duration: float
-) -> Optional[Dict]:
-    """
-    Validate a candidate moment by analyzing multiple frames around it.
-    Sends all 3 frames in ONE Gemini batch call (3x fewer API requests).
-    Uses majority voting across frames for reliable event classification.
-    """
-    from app.core.llm import analyze_frames_batch
-
-    # Collect frames: 0.5s before, at timestamp, 0.5s after
-    frames_with_ts: list = []
-    for offset in [-0.5, 0.0, 0.5]:
-        t = timestamp + offset
-        if t < 0 or t > duration:
-            continue
-        frame_num = int(t * fps)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-        ret, frame = cap.read()
-        if not ret:
-            continue
-        h, w = frame.shape[:2]
-        if w > 640:
-            frame = cv2.resize(frame, (640, int(h * 640 / w)))
-        frames_with_ts.append((frame, t))
-
-    if not frames_with_ts:
-        return None
-
-    # One batch call instead of 3 separate calls
-    batch_results = analyze_frames_batch(frames_with_ts)
-    results = [
-        r for r in batch_results if r["event_type"] != "NONE" and r["confidence"] >= 0.5
-    ]
-
-    if not results:
-        return None
-
-    # Majority voting: pick the most common event type
-    from collections import Counter
-
-    event_counts = Counter(r["event_type"] for r in results)
-    most_common_event, count = event_counts.most_common(1)[0]
-
-    # Require at least 2 frames to agree for non-GOAL events
-    # Goals are dramatic enough that 1 confident detection is enough
-    if most_common_event != "GOAL" and count < 2:
-        return None
-
-    # Average confidence of matching results
-    matching = [r for r in results if r["event_type"] == most_common_event]
-    avg_confidence = sum(r["confidence"] for r in matching) / len(matching)
-
-    # Use the best description
-    best_result = max(matching, key=lambda r: r["confidence"])
-
-    return {
-        "event_type": most_common_event,
-        "confidence": round(avg_confidence, 3),
-        "timestamp": round(timestamp, 2),
-        "description": best_result["description"],
-        "frame_votes": count,
-    }
-
-
-# Track consecutive Vision AI failures for fallback
-_vision_failures = 0
-_MAX_VISION_FAILURES = 5  # After this many failures, use fallback
-
-
-def fallback_heuristic_event(
-    motion_score: float, timestamp: float, duration: float
-) -> Optional[Dict]:
-    """
-    Fallback event detection when Vision AI is unavailable.
-    Uses motion score + temporal position to generate generic highlights.
-    Much less accurate but ensures some highlights are generated.
-    """
-    # Very high motion in key periods suggests something important
-    late_game = duration > 0 and (timestamp / duration) > 0.75
-
-    # Conservative thresholds - only flag extremely high motion moments
-    if motion_score >= 0.7:
-        event_type = "HIGHLIGHT"  # Generic highlight
-        confidence = min(0.6, motion_score * 0.8)
-        desc = "High action moment detected (Vision AI fallback)"
-    elif motion_score >= 0.55 and late_game:
-        event_type = "HIGHLIGHT"
-        confidence = 0.5
-        desc = "Late-game action moment (Vision AI fallback)"
-    else:
-        return None
-
-    return {
-        "event_type": event_type,
-        "confidence": round(confidence, 3),
-        "timestamp": round(timestamp, 2),
-        "description": desc,
-    }
-
-
-def validate_candidate_with_fallback(
-    cap, timestamp: float, fps: float, duration: float, motion_score: float
-) -> Optional[Dict]:
-    """
-    Validate a candidate moment, with fallback to heuristics if Vision AI fails.
-    """
-    global _vision_failures
-
-    # If too many Vision AI failures, use fallback immediately
-    if _vision_failures >= _MAX_VISION_FAILURES:
-        logger.warning("Vision AI unavailable - using motion-based fallback")
-        return fallback_heuristic_event(motion_score, timestamp, duration)
-
-    result = validate_candidate_moment(cap, timestamp, fps, duration)
-
-    if result is None:
-        # Check if this was due to Vision AI failure (no frames analyzed)
-        # vs. genuinely no event detected
-        # We can't easily distinguish, so just try the fallback for high-motion moments
-        if motion_score >= 0.65:
-            _vision_failures += 1
-            if _vision_failures >= _MAX_VISION_FAILURES:
-                logger.warning(
-                    f"Vision AI failed {_vision_failures} times - switching to fallback mode"
-                )
-                return fallback_heuristic_event(motion_score, timestamp, duration)
-        return None
-
-    # Vision AI worked - reset failure counter
-    _vision_failures = 0
-    return result
-
-
-def find_motion_peaks(
-    motion_windows: list,
-    threshold: Optional[float] = None,
-    min_gap: Optional[float] = None,
-) -> list:
-    if threshold is None:
-        threshold = CONFIG["MOTION_PEAK_THRESHOLD"]
-    if min_gap is None:
-        min_gap = CONFIG["MOTION_MIN_GAP_SECS"]
-
-    # Type narrowing - ensure not None
-    assert isinstance(threshold, float) and isinstance(min_gap, float)
-
-    if not isinstance(motion_windows, list) or not motion_windows:
-        return []
-    if threshold < 0 or threshold > 1:
-        logger.warning(f"Invalid threshold {threshold}, using default")
-        threshold = CONFIG["MOTION_PEAK_THRESHOLD"]
-
-    candidates = []
-    last_peak = -999
-
-    for w in motion_windows:
-        if not isinstance(w, dict) or "motionScore" not in w or "timestamp" not in w:
-            continue
-        if w["motionScore"] >= threshold:
-            t = w["timestamp"]
-            if t - last_peak >= min_gap:
-                candidates.append(t)
-                last_peak = t
-
-    return candidates
+# ── Vision Validation Logic ──────────────────────────────────────────────────
+# Moved to app.core.vision_validator
 
 
 # ── FFmpeg helpers ───────────────────────────────────────────────────────────
@@ -609,79 +276,20 @@ def _fallback_commentary(event_type, final_score, timestamp, duration):
         text = "LATE DRAMA! " + text
     return text
 
+    # ── Gemini commentary ─────────────────────────────────────────────────────────
+    # Commentary logic moved to app.core.llm
 
-# ── Gemini commentary ─────────────────────────────────────────────────────────
-# Commentary logic moved to app.core.llm
+    # ── Gemini match summary ──────────────────────────────────────────────────────
+    # Summary logic moved to app.core.llm
 
-
-# ── Gemini match summary ──────────────────────────────────────────────────────
-# Summary logic moved to app.core.llm
-
-
-# Highlight selection logic moved to app.core.highlight_manager
+    # Highlight selection logic moved to app.core.highlight_manager
 
     return sorted(highlights, key=lambda x: x["startTime"])
 
 
 # ── Team colour clustering ────────────────────────────────────────────────────
-def _crop_jersey(
-    frame: np.ndarray, x1: float, y1: float, x2: float, y2: float
-) -> np.ndarray:
-    """Return the torso crop (middle 40% height, inner 60% width) of a person box."""
-    h, w = frame.shape[:2]
-    bx1, by1 = int(x1 * w), int(y1 * h)
-    bx2, by2 = int(x2 * w), int(y2 * h)
-    bw, bh = bx2 - bx1, by2 - by1
-    if bw < 4 or bh < 10:
-        return np.array([])
-    # Torso: rows 30-70%, cols 20-80%
-    cy1 = by1 + int(bh * 0.30)
-    cy2 = by1 + int(bh * 0.70)
-    cx1 = bx1 + int(bw * 0.20)
-    cx2 = bx1 + int(bw * 0.80)
-    crop = frame[cy1:cy2, cx1:cx2]
-    return crop if crop.size else np.array([])
-
-
-def _dominant_colour(crop: np.ndarray) -> Optional[List[int]]:
-    """Return [R, G, B] dominant colour of a BGR crop via median."""
-    if crop is None or crop.size < 3:
-        return None
-    rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-    pixels = rgb.reshape(-1, 3).astype(np.float32)
-    return [int(v) for v in np.median(pixels, axis=0).tolist()]
-
-
-def _cluster_teams(
-    colours: list[list[int]], n: int = 2
-) -> tuple[list[list[int]], list[int]]:
-    """
-    K-means cluster colours into n teams.
-    Returns (centroids, labels) where centroids = [[R,G,B], ...]
-    Uses numpy-only mini K-means (no sklearn needed).
-    """
-    if len(colours) < n:
-        defaults = [[220, 50, 50], [50, 100, 220]]
-        return defaults[:n], [i % n for i in range(len(colours))]
-    data = np.array(colours, dtype=np.float32)
-    # Initialise centres from extremes
-    centres = data[np.random.choice(len(data), n, replace=False)]
-    for _ in range(20):
-        dists = np.stack([np.linalg.norm(data - c, axis=1) for c in centres], axis=1)
-        labels = np.argmin(dists, axis=1)
-        new_c = np.stack(
-            [
-                data[labels == k].mean(axis=0) if np.any(labels == k) else centres[k]
-                for k in range(n)
-            ]
-        )
-        if np.allclose(centres, new_c, atol=1.0):
-            break
-        centres = new_c
-    final_labels = np.argmin(
-        np.stack([np.linalg.norm(data - c, axis=1) for c in centres], axis=1), axis=1
-    )
-    return [[int(v) for v in c.tolist()] for c in centres], final_labels.tolist()
+# ── Team Detector Logic ──────────────────────────────────────────────────
+# Moved to app.core.team_detector
 
 
 def _get_motion_at(windows, timestamp):
@@ -691,135 +299,8 @@ def _get_motion_at(windows, timestamp):
 
 
 # ── PHASE 2 OPTIMIZATION 1: ENHANCED BALL TRACKING ──────────────────────────
-def smooth_ball_trajectory(track_frames: list, window_size: int = 3) -> list:
-    """
-    Smoothing ball positions using a sliding window average to reduce jitter.
-    Improves visual quality and tracking stability.
-    """
-    if not track_frames or window_size < 1:
-        return track_frames
-
-    smoothed = []
-    for i, frame in enumerate(track_frames):
-        if not frame.get("b") or len(frame["b"]) == 0:
-            smoothed.append(frame)
-            continue
-
-        # Get surrounding frames for smoothing
-        start = max(0, i - window_size // 2)
-        end = min(len(track_frames), i + window_size // 2 + 1)
-        window_frames = track_frames[start:end]
-
-        # Average ball positions across window
-        all_balls = []
-        for wf in window_frames:
-            all_balls.extend(wf.get("b", []))
-
-        if all_balls:
-            # Average each coordinate
-            smoothed_ball = [
-                round(np.mean([b[j] for b in all_balls]), 4)
-                for j in range(len(all_balls[0]))
-            ]
-            frame_copy = frame.copy()
-            frame_copy["b"] = [smoothed_ball[:4]]  # Keep top ball
-            smoothed.append(frame_copy)
-        else:
-            smoothed.append(frame)
-
-    return smoothed
-
-
-def predict_ball_trajectory(balls: list, fps: float = 30.0) -> dict:
-    """
-    Predict ball movement trajectory based on historical positions.
-    Useful for detecting ball speed and direction changes.
-    """
-    if len(balls) < 2:
-        return {"direction": "unknown", "speed": 0.0, "confidence": 0.0}
-
-    try:
-        # Get last 3 positions
-        recent = balls[-3:] if len(balls) >= 3 else balls
-        if len(recent) < 2:
-            return {"direction": "unknown", "speed": 0.0, "confidence": 0.0}
-
-        # Calculate velocity
-        x_vel = recent[-1][0] - recent[-2][0]
-        y_vel = recent[-1][1] - recent[-2][1]
-
-        # Speed in normalized units per frame
-        speed = np.sqrt(x_vel**2 + y_vel**2)
-
-        # Direction in degrees (0=right, 90=down)
-        direction = np.degrees(np.arctan2(y_vel, x_vel))
-
-        # Confidence based on consistency
-        confidence = min(speed * 2, 1.0)  # Higher speed = more confident
-
-        return {
-            "direction": f"{direction:.1f}°",
-            "speed": round(speed, 4),
-            "confidence": round(confidence, 3),
-            "velocity": [round(x_vel, 4), round(y_vel, 4)],
-        }
-    except Exception as e:
-        logger.debug(f"Trajectory prediction failed: {e}")
-        return {"direction": "unknown", "speed": 0.0, "confidence": 0.0}
-
-
-# ── PHASE 2 OPTIMIZATION 2: CONTEXT-AWARE COMMENTARY ─────────────────────────
-def analyze_team_formation(track_frames: list, team_colors: list) -> dict:
-    """
-    Analyze team formation and positioning from tracking data.
-    Returns formation metrics for context-aware commentary.
-    """
-    if not track_frames:
-        return {"formation": "unknown", "spacing": 0.0, "cohesion": 0.0}
-
-    try:
-        # Get positions from last few frames
-        recent_frames = track_frames[-5:]
-        all_positions = []
-
-        for frame in recent_frames:
-            for person in frame.get("p", [])[:11]:  # 11 players max
-                if len(person) >= 3:
-                    all_positions.append((person[0], person[1]))  # x, y
-
-        if len(all_positions) < 4:
-            return {"formation": "unknown", "spacing": 0.0, "cohesion": 0.0}
-
-        positions = np.array(all_positions)
-
-        # Calculate pairwise distances
-        distances = np.sqrt(
-            ((positions[:, None, :] - positions[None, :, :]) ** 2).sum(axis=2)
-        )
-
-        # Average spacing (excluding self-distances of 0)
-        spacing = np.mean(distances[distances > 0.01])
-
-        # Cohesion = inverse of spacing (closer = higher cohesion)
-        cohesion = 1.0 / (1.0 + spacing)
-
-        # Formation classification based on spacing
-        if spacing < 0.15:
-            formation = "compact"  # Defensive
-        elif spacing < 0.25:
-            formation = "balanced"
-        else:
-            formation = "spread"  # Attacking
-
-        return {
-            "formation": formation,
-            "spacing": round(spacing, 3),
-            "cohesion": round(cohesion, 3),
-            "player_count": len(all_positions),
-        }
-    except Exception as e:
-        logger.debug(f"Formation analysis failed: {e}")
-        return {"formation": "unknown", "spacing": 0.0, "cohesion": 0.0}
+# ── Spatial Analysis Logic ────────────────────────────────────────────────
+# Moved to app.core.spatial_analysis
 
 
 # Audio mixing logic moved to app.core.audio_engine
@@ -886,90 +367,26 @@ def _download_youtube_video(
     end_time: Optional[float] = None,
 ) -> str:
     """Download YouTube video using yt-dlp to UPLOADS_DIR."""
-    import yt_dlp
 
-    logger.info(f"Downloading YouTube video: {url} (range: {start_time}-{end_time})")
-    # Force mp4 and limit resolution to 720p or 1080p for speed
-    out_tmpl = str(UPLOADS_DIR / f"{match_id}_yt.%(ext)s")
+    def progress_callback(percent):
+        overall_progress = min(20, int(percent * 0.2))
+        try:
+            requests.post(
+                f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
+                json={"progress": overall_progress, "stage": "downloading"},
+                timeout=1,
+            )
+        except Exception:
+            pass
 
-    from yt_dlp.utils import download_range_func
-
-    last_emit_time = 0
-
-    def progress_hook(d):
-        nonlocal last_emit_time
-        if d["status"] == "downloading":
-            import time
-            from urllib.parse import urljoin
-
-            # Throttle to emit at most once per second
-            now = time.time()
-            if now - last_emit_time < 1.0:
-                return
-
-            last_emit_time = now
-
-            # Calculate percentage
-            percent = 0.0
-            if "downloaded_bytes" in d and "total_bytes" in d:
-                percent = (d["downloaded_bytes"] / d["total_bytes"]) * 100
-            elif "_percent_str" in d:
-                try:
-                    percent = float(d["_percent_str"].strip("%"))
-                except Exception:
-                    pass
-
-            # Map download (0-100%) to overall progress (0-20%)
-            # yt-dlp is the first step, so we allocate the first 20% to it visually
-            overall_progress = min(20, int(percent * 0.2))
-            try:
-                requests.post(
-                    f"{ORCHESTRATOR_URL}/matches/{match_id}/progress",
-                    json={"progress": overall_progress, "stage": "downloading"},
-                    timeout=1,
-                )
-            except Exception:
-                pass
-
-    # If range is specified, use it. Otherwise default to first 3 hours as a safety cap.
-    start = int(start_time) if start_time is not None else 0
-    end = (
-        int(end_time) if end_time is not None else 10800
-    )  # 3 hours max if not specified
-
-    ydl_opts: Dict = {  # type: ignore
-        "format": "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "outtmpl": out_tmpl,
-        "quiet": False,
-        "no_warnings": True,
-        "merge_output_format": "mp4",
-        "noplaylist": True,  # download ONLY the single video, never the whole playlist
-        "download_ranges": download_range_func(None, [(start, end)]),  # type: ignore[arg-type]
-        "force_keyframes_at_cuts": True,
-        "progress_hooks": [progress_hook],
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
-            info = ydl.extract_info(url, download=True)
-            # Find the actual downloaded filepath (might vary slightly depending on merge)
-            dl_path = ydl.prepare_filename(info)
-            # Ensure it ends with mp4 since we merged it
-            if not dl_path.endswith(".mp4"):
-                dl_path = dl_path.rsplit(".", 1)[0] + ".mp4"
-
-            if os.path.exists(dl_path):
-                logger.info(f"Downloaded YouTube video to: {dl_path}")
-                return dl_path
-            else:
-                # Fallback if the strict filename wasn't found but a file with the ID was
-                for f in UPLOADS_DIR.glob(f"{match_id}_yt.*"):
-                    return str(f)
-
-            raise Exception("Download completed but file not found")
-    except Exception as e:
-        logger.error(f"yt-dlp download failed: {e}")
-        raise ValueError(f"Failed to download YouTube video: {e}")
+    return _download_youtube_video_base(
+        url=url,
+        output_dir=str(UPLOADS_DIR),
+        filename_prefix=match_id,
+        start_time=start_time,
+        end_time=end_time,
+        progress_callback=progress_callback,
+    )
 
 
 # ── Goal Detection Pipeline ────────────────────────────────────────────────────

@@ -9,7 +9,6 @@ import {
   Scissors,
   Clock,
   Loader2,
-  File,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from "socket.io-client";
