@@ -7,9 +7,7 @@ from .io_ops import _run_ffmpeg
 logger = logging.getLogger(__name__)
 
 try:
-    from app.core.soccer_analysis import (
-        process_clip_frames as _sa_process,
-    )
+    from app.core.soccer import process_clip_frames as _sa_process
 except ImportError:
     _sa_process = None
 

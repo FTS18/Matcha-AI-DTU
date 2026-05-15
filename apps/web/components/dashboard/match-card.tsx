@@ -1,15 +1,12 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { 
-  Scissors, 
-  RefreshCw, 
-  XCircle, 
-  PlayCircle, 
-  Loader2 
-} from "lucide-react";
+import { Scissors, PlayCircle } from "lucide-react";
 import { MiniHeatmap } from "./mini-heatmap";
-import { PIPELINE_STAGES, formatTime, timeAgo } from "@matcha/shared";
+import { formatTime, timeAgo } from "@matcha/shared";
+import { CardStats } from "./card-stats";
+import { CardActions } from "./card-actions";
+import { CardProgress } from "./card-progress";
 
 interface MatchCardProps {
   match: any;
@@ -62,6 +59,13 @@ export const MatchCard = ({
     minute: "2-digit",
   });
 
+  const thumbnailUrl = m.thumbnailUrl || m.heatmapUrl;
+  const fullThumbnailUrl = thumbnailUrl?.startsWith("http")
+    ? thumbnailUrl
+    : thumbnailUrl
+      ? `${apiBase}${thumbnailUrl}`
+      : null;
+
   return (
     <motion.div
       layout
@@ -90,13 +94,9 @@ export const MatchCard = ({
       {/* ════ MOBILE LAYOUT ════ */}
       <div className="lg:hidden">
         <Link href={`/matches/${m.id}`} className="block relative w-full h-40 overflow-hidden bg-black/70">
-          {m.thumbnailUrl || m.heatmapUrl ? (
+          {fullThumbnailUrl ? (
             <img
-              src={
-                (m.thumbnailUrl ?? m.heatmapUrl)!.startsWith("http")
-                  ? (m.thumbnailUrl ?? m.heatmapUrl)!
-                  : `${apiBase}${m.thumbnailUrl ?? m.heatmapUrl}`
-              }
+              src={fullThumbnailUrl}
               alt="Match preview"
               className={`w-full h-full transition-all duration-700 group-hover:scale-105 ${m.thumbnailUrl ? "object-cover saturate-75 group-hover:saturate-100" : "object-contain p-6 opacity-40"}`}
             />
@@ -136,24 +136,7 @@ export const MatchCard = ({
 
         {isProcessing && (
           <div className="px-4 py-2.5 bg-blue-500/5 border-b border-blue-500/15">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-mono text-[8px] uppercase tracking-widest text-blue-300/70">
-                {stage
-                  ? (PIPELINE_STAGES[stage] ?? stage)
-                  : m.status === "UPLOADED" && safeProgress === 0
-                    ? "Queued"
-                    : "Analysing"}
-              </span>
-              <span className="font-mono text-[10px] tabular-nums text-blue-300 font-bold">
-                {safeProgress}%
-              </span>
-            </div>
-            <div className="h-1 w-full bg-blue-950/50 overflow-hidden rounded-full">
-              <div
-                className="h-full bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-400 transition-all duration-500 rounded-full"
-                style={{ width: `${safeProgress}%` }}
-              />
-            </div>
+            <CardProgress status={m.status} stage={stage} progress={progress} />
           </div>
         )}
 
@@ -188,55 +171,18 @@ export const MatchCard = ({
             >
               <Scissors className="size-4" />
             </Link>
-            {!isConfirming ? (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onReanalyze(m.id);
-                  }}
-                  disabled={reanalyzingId === m.id || m.status === "PROCESSING"}
-                  className="flex items-center justify-center w-11 text-muted-foreground hover:text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-                >
-                  <RefreshCw
-                    className={`size-4 ${reanalyzingId === m.id || m.status === "PROCESSING" ? "animate-spin text-accent" : ""}`}
-                  />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onConfirmDelete(m.id);
-                  }}
-                  className="flex items-center justify-center w-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <XCircle className="size-4" />
-                </button>
-              </>
-            ) : (
-              <div className="flex items-stretch">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onDelete(m.id);
-                  }}
-                  disabled={isDeleting}
-                  className="font-mono px-3 text-[9px] bg-destructive text-white uppercase tracking-widest font-bold flex items-center gap-1"
-                >
-                  {isDeleting ? <Loader2 className="size-3 animate-spin" /> : "DEL"}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onConfirmDelete(null);
-                  }}
-                  className="font-mono w-10 text-[10px] text-muted-foreground hover:bg-white/5 border-l border-white/10 flex items-center justify-center"
-                >X</button>
-              </div>
-            )}
+            <div className="flex items-center justify-center px-2">
+              <CardActions
+                matchId={m.id}
+                status={m.status}
+                isConfirming={isConfirming}
+                isDeleting={isDeleting}
+                reanalyzingId={reanalyzingId}
+                onConfirmDelete={onConfirmDelete}
+                onDelete={onDelete}
+                onReanalyze={onReanalyze}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -250,7 +196,7 @@ export const MatchCard = ({
           >
             {m.thumbnailUrl ? (
               <img
-                src={m.thumbnailUrl.startsWith("http") ? m.thumbnailUrl : `${apiBase}${m.thumbnailUrl}`}
+                src={fullThumbnailUrl!}
                 alt="Preview"
                 className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all duration-700 scale-110 group-hover/thumb:scale-100 saturate-50 group-hover/thumb:saturate-100"
               />
@@ -278,49 +224,16 @@ export const MatchCard = ({
             <p className="font-mono text-[9px] text-muted-foreground/40 uppercase tracking-widest truncate">
               {formattedTime} • ID: {m.id.split("-")[0]}
             </p>
-            {isProcessing && (
-              <div className="mt-1.5 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[7px] uppercase tracking-[0.15em] text-muted-foreground/70">
-                    {stage
-                      ? (PIPELINE_STAGES[stage] ?? stage)
-                      : m.status === "UPLOADED" && safeProgress === 0
-                        ? "Queued"
-                        : "Processing"}
-                  </span>
-                  <span className="font-mono text-[9px] tabular-nums text-blue-300">{safeProgress}%</span>
-                </div>
-                <div className="h-1 w-full bg-white/10 overflow-hidden rounded-sm">
-                  <div
-                    className="h-full bg-linear-to-r from-blue-500 to-cyan-300 transition-all duration-500"
-                    style={{ width: `${safeProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
+            <CardProgress status={m.status} stage={stage} progress={progress} />
           </Link>
         </div>
         <div className="flex items-stretch border-l border-white/5">
-          <div className="flex items-stretch divide-x divide-white/5">
-            {[
-              {
-                v: m.duration ? formatTime(m.duration) : "--:--",
-                cls: "font-mono text-[10px] text-white/70 tabular-nums",
-              },
-              {
-                v: m.status === "COMPLETED" ? m._count.events.toString().padStart(2, "0") : "--",
-                cls: "font-display text-[14px] text-accent drop-shadow-[0_0_8px_rgba(var(--color-accent),0.4)]",
-              },
-              {
-                v: m.status === "COMPLETED" ? m._count.highlights.toString().padStart(2, "0") : "--",
-                cls: "font-display text-[14px] text-primary drop-shadow-[0_0_8px_rgba(var(--color-primary),0.4)]",
-              },
-            ].map((stat, i) => (
-              <div key={i} className="w-20 flex items-center justify-center bg-white/1">
-                <span className={stat.cls}>{stat.v}</span>
-              </div>
-            ))}
-          </div>
+          <CardStats
+            duration={m.duration}
+            eventCount={m._count.events}
+            highlightCount={m._count.highlights}
+            status={m.status}
+          />
           <div className="flex items-center justify-center w-30 border-l border-white/5">
             <Link
               href={`/matches/${m.id}#highlights`}
@@ -331,66 +244,16 @@ export const MatchCard = ({
             </Link>
           </div>
           <div className="flex items-center justify-center w-30 border-l border-white/10 bg-white/2">
-            {!isConfirming ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onReanalyze(m.id);
-                  }}
-                  disabled={reanalyzingId === m.id || m.status === "PROCESSING"}
-                  className={`flex items-center justify-center size-8 bg-white/5 border border-white/5 transition-all rounded-full ${reanalyzingId === m.id || m.status === "PROCESSING" ? "text-accent border-accent/30 cursor-wait" : "hover:bg-accent/10 text-muted-foreground hover:text-accent hover:border-accent/30"}`}
-                  title={m.status === "PROCESSING" ? "Analysis in progress" : "Reanalyze"}
-                >
-                  <RefreshCw
-                    className={`size-3.5 ${reanalyzingId === m.id || m.status === "PROCESSING" ? "animate-spin" : ""}`}
-                  />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onConfirmDelete(m.id);
-                  }}
-                  className="flex items-center justify-center size-8 bg-white/5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-white/5 hover:border-destructive/30 transition-all rounded-full"
-                  title="Delete"
-                >
-                  <XCircle className="size-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center bg-card border border-destructive/20 overflow-hidden scale-90">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onDelete(m.id);
-                  }}
-                  disabled={isDeleting}
-                  className="font-mono px-3 py-2 text-[8px] bg-destructive text-white uppercase tracking-widest font-bold hover:brightness-110 flex items-center gap-1"
-                >
-                  {isDeleting ? (
-                    <>
-                      <Loader2 className="size-2.5 animate-spin" />
-                      ...
-                    </>
-                  ) : (
-                    "DEL"
-                  )}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onConfirmDelete(null);
-                  }}
-                  className="font-mono px-3 py-2 text-[8px] text-muted-foreground hover:bg-white/5 uppercase tracking-widest border-l border-white/10"
-                >
-                  X
-                </button>
-              </div>
-            )}
+            <CardActions
+              matchId={m.id}
+              status={m.status}
+              isConfirming={isConfirming}
+              isDeleting={isDeleting}
+              reanalyzingId={reanalyzingId}
+              onConfirmDelete={onConfirmDelete}
+              onDelete={onDelete}
+              onReanalyze={onReanalyze}
+            />
           </div>
         </div>
       </div>

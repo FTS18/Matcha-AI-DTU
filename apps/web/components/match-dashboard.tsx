@@ -16,43 +16,13 @@ import { STATUS_CONFIG as SHARED_STATUS_CONFIG } from "@matcha/shared";
 import { MatchCard } from "./dashboard/match-card";
 import { FilterTabs, FilterOption } from "./dashboard/filter-tabs";
 import { EmptyState } from "./dashboard/empty-state";
+import { DashboardLoading } from "./dashboard/dashboard-loading";
+import { STATUS_CONFIG } from "./dashboard/dashboard-config";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ||
   process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
   "http://localhost:4000";
-
-const THEME_MAP: Record<string, { color: string }> = {
-  success: {
-    color: "text-emerald-400 bg-emerald-500/15 border-emerald-500/40",
-  },
-  info: { color: "text-blue-400 bg-blue-500/15 border-blue-500/40" },
-  warning: { color: "text-amber-400 bg-amber-500/15 border-amber-500/40" },
-  error: { color: "text-red-400 bg-red-500/15 border-red-500/40" },
-};
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  COMPLETED: {
-    ...SHARED_STATUS_CONFIG.COMPLETED,
-    ...THEME_MAP[SHARED_STATUS_CONFIG.COMPLETED.theme],
-    icon: <CheckCircle2 className="w-3 h-3" />,
-  },
-  PROCESSING: {
-    ...SHARED_STATUS_CONFIG.PROCESSING,
-    ...THEME_MAP[SHARED_STATUS_CONFIG.PROCESSING.theme],
-    icon: <Loader2 className="w-3 h-3 animate-spin" />,
-  },
-  UPLOADED: {
-    ...SHARED_STATUS_CONFIG.UPLOADED,
-    ...THEME_MAP[SHARED_STATUS_CONFIG.UPLOADED.theme],
-    icon: <Upload className="w-3 h-3" />,
-  },
-  FAILED: {
-    ...SHARED_STATUS_CONFIG.FAILED,
-    ...THEME_MAP[SHARED_STATUS_CONFIG.FAILED.theme],
-    icon: <XCircle className="w-3 h-3" />,
-  },
-};
 
 export const MatchDashboard = React.memo(function MatchDashboardContent() {
   const { matches, loading, progressMap, stageMap, deleteMatch, reanalyzeMatch, refetch } = useMatches();
@@ -94,14 +64,7 @@ export const MatchDashboard = React.memo(function MatchDashboardContent() {
     : [];
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border/50 bg-card/30">
-        <Loader2 className="size-6 text-accent animate-spin mb-4" />
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-          INITIALIZING ANALYTICS ENGINE...
-        </span>
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   return (

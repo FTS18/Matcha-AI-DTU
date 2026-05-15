@@ -1,4 +1,8 @@
 import logging
+from typing import Any, Dict, List
+from app.core.scoring.goal import score_goal as score_goal_mod
+from app.core.scoring.save import score_save as score_save_mod
+from app.core.scoring.foul import score_foul as score_foul_mod
 
 logger = logging.getLogger(__name__)
 
@@ -38,35 +42,22 @@ def time_context_weight(timestamp: float, duration: float) -> float:
     return 0.65  # first half
 
 
-def score_goal(
-    motion_score: float, timestamp: float, duration: float, confidence: float
-) -> float:
-    """Specific scoring logic for goals."""
-    base_score = compute_context_score(
-        "GOAL", motion_score, timestamp, duration, confidence
+def score_goal(motion_score, timestamp, duration, confidence):
+    return score_goal_mod(
+        motion_score, timestamp, duration, confidence, compute_context_score
     )
-    if duration > 0 and (timestamp / duration) > 0.85:
-        return round(min(base_score * 1.2, 10.0), 2)  # Extra bump for late goals
-    return base_score
 
 
-def score_save(
-    motion_score: float, timestamp: float, duration: float, confidence: float
-) -> float:
-    """Specific scoring logic for saves."""
-    base_score = compute_context_score(
-        "SAVE", motion_score, timestamp, duration, confidence
+def score_save(motion_score, timestamp, duration, confidence):
+    return score_save_mod(
+        motion_score, timestamp, duration, confidence, compute_context_score
     )
-    if duration > 0 and (timestamp / duration) < 0.08:
-        return round(min(base_score * 1.3, 10.0), 2)  # Frantic early-game save bonus
-    return base_score
 
 
-def score_foul(
-    motion_score: float, timestamp: float, duration: float, confidence: float
-) -> float:
-    """Specific scoring logic for fouls."""
-    return compute_context_score("FOUL", motion_score, timestamp, duration, confidence)
+def score_foul(motion_score, timestamp, duration, confidence):
+    return score_foul_mod(
+        motion_score, timestamp, duration, confidence, compute_context_score
+    )
 
 
 def compute_context_score(
@@ -97,3 +88,30 @@ def compute_context_score(
         score *= 1.3
 
     return round(min(score * 10.0, 10.0), 2)
+
+
+def score_raw_events(
+    raw_events: list,
+    motion_windows: list,
+    duration: float,
+    get_motion_at_fn: Any,
+) -> list:
+    """Batch score raw events using specialized logic per type."""
+    scored_events = []
+    for ev in raw_events:
+        m_score = get_motion_at_fn(motion_windows, ev["timestamp"])
+
+        # Use specialized scoring if available
+        if ev["type"] == "GOAL":
+            fs = score_goal(m_score, ev["timestamp"], duration, ev["confidence"])
+        elif ev["type"] == "SAVE":
+            fs = score_save(m_score, ev["timestamp"], duration, ev["confidence"])
+        elif ev["type"] == "FOUL":
+            fs = score_foul(m_score, ev["timestamp"], duration, ev["confidence"])
+        else:
+            fs = compute_context_score(
+                ev["type"], m_score, ev["timestamp"], duration, ev["confidence"]
+            )
+
+        scored_events.append({**ev, "finalScore": fs})
+    return scored_events

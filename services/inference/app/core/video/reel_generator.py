@@ -1,35 +1,31 @@
 import os
 import logging
-import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 
 from app.core.tts import tts_generate
-from .video import (
-    _run_ffmpeg,
-    generate_silent_audio,
-    _annotate_clip_with_soccer_analysis,
+from .io_ops import _run_ffmpeg, generate_silent_audio
+from .soccer_annotator import _annotate_clip_with_soccer_analysis
+from .ffmpeg_builder import (
     build_clip_extraction_command,
     build_stitch_command,
     build_audio_mix_command,
-    EVENT_CONFIG,
-    VALID_TRANSITIONS,
-    LOGO_PATH,
 )
+from .constants import EVENT_CONFIG, VALID_TRANSITIONS, LOGO_PATH
 
 logger = logging.getLogger(__name__)
 
 
 def create_highlight_reel(
     video_path: str,
-    highlights: list,
+    highlights: List[Dict],
     match_id: str,
     output_dir: str,
     music_dir: Path,
-    tracking_data: Optional[list] = None,
+    tracking_data: Optional[List] = None,
     aspect_ratio: str = "16:9",
     language: str = "english",
-) -> dict:
+) -> Dict:
     """
     Production-grade highlight reel (robust version):
         1. Extracts per-highlight MP4 clips with event title overlay + Matcha AI watermark.

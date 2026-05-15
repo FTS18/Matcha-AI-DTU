@@ -8,3 +8,4 @@ from .ffmpeg_builder import (
 )
 from .soccer_annotator import _annotate_clip_with_soccer_analysis
 from .constants import EVENT_CONFIG, VALID_TRANSITIONS, LOGO_PATH
+from .reel_generator import create_highlight_reel
