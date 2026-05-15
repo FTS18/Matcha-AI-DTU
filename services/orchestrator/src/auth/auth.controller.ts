@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
   UsePipes,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod.pipe';
@@ -18,6 +19,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UsePipes(new ZodValidationPipe(LoginSchema))
   async login(@Body() body: any) {
     const user = await this.authService.validateUser(body.email, body.password);
