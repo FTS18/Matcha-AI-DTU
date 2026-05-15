@@ -1,4 +1,4 @@
-﻿# Troubleshooting Matcha-AI-DTU
+# Troubleshooting Matcha-AI-DTU
 
 If you run into issues launching the application or processing a video, refer to the most common resolutions below.
 
@@ -6,13 +6,72 @@ If you run into issues launching the application or processing a video, refer to
 
 ## Docker Infrastructure Issues
 
-### Problem: `docker compose up -d` fails or ports are bound
+### Problem: PostgreSQL port `5433` is already in use
 
-**Symptoms**: Docker cannot bind to `5433` (Postgres) or `6380` (Redis). **Cause**: Another application or local database service is occupying the port. **Resolution**:
+**Problem**: `docker compose up -d` fails with an error similar to `Bind for 0.0.0.0:5433 failed: port is already allocated`.
 
-1. Run `netstat -ano | findstr :5433` (Windows) to identify the PID.
-2. Terminate the blocking process via Task Manager or `taskkill /PID <id> /F`.
-3. Alternatively, explicitly define different port mappings in the `docker-compose.yml` and mirror them in `services/orchestrator/.env`.
+**Cause**: A local PostgreSQL instance or another container is already listening on port `5433`, so Docker cannot publish the Matcha-AI-DTU database container on that host port.
+
+**Fix**:
+
+1. Find the process using the port:
+   - Windows: `netstat -ano | findstr :5433`
+   - macOS/Linux: `lsof -i :5433`
+2. Stop the conflicting process, or change the PostgreSQL host port in `docker-compose.yml`.
+3. If you change the port mapping, mirror the same value in `services/orchestrator/.env` so the orchestrator connects to the right database endpoint.
+
+### Problem: Redis port `6380` is already in use
+
+**Problem**: Docker fails to start Redis and reports that port `6380` is already allocated.
+
+**Cause**: Another Redis instance, background service, or previous Matcha-AI-DTU container is still bound to the host port.
+
+**Fix**:
+
+1. Check what is using the port:
+   - Windows: `netstat -ano | findstr :6380`
+   - macOS/Linux: `lsof -i :6380`
+2. Stop the conflicting process, or run `docker compose down` to remove stale project containers.
+3. If the port must stay occupied, update the Redis port mapping in `docker-compose.yml` and keep any matching environment variables in sync.
+
+### Problem: A container keeps restarting because mounted volumes are not writable
+
+**Problem**: `docker compose ps` shows a service repeatedly restarting, and `docker compose logs <service>` includes permission errors for mounted directories or generated files.
+
+**Cause**: Docker cannot write to a bind-mounted project directory, commonly after switching between Windows, WSL, Docker Desktop, or a different user account.
+
+**Fix**:
+
+1. Stop the stack with `docker compose down`.
+2. Ensure the project directory is writable by your current user. On macOS/Linux, run `chmod -R u+rw .` from the repository root if needed.
+3. Remove stale containers and recreate them with `docker compose up -d --force-recreate`.
+4. Re-check the failing service with `docker compose logs <service>`.
+
+### Problem: The orchestrator cannot connect to PostgreSQL
+
+**Problem**: The orchestrator starts but logs database connection errors such as `ECONNREFUSED`, authentication failures, or timeouts when it tries to reach PostgreSQL.
+
+**Cause**: The database container is not healthy yet, the host/port in `services/orchestrator/.env` does not match `docker-compose.yml`, or the orchestrator is using a host-only address from inside Docker.
+
+**Fix**:
+
+1. Confirm PostgreSQL is running with `docker compose ps postgres` and inspect logs with `docker compose logs postgres`.
+2. Compare `DATABASE_URL` in `services/orchestrator/.env` with the PostgreSQL service name, username, password, and published port in `docker-compose.yml`.
+3. When the orchestrator runs on the host, use the published host port such as `localhost:5433`. When it runs inside Docker, use the Compose service name and internal port, such as `postgres:5432`.
+4. Restart the orchestrator after changing environment variables.
+
+### Problem: Docker Desktop is not running
+
+**Problem**: Docker commands fail with messages like `Cannot connect to the Docker daemon`, `docker daemon is not running`, or `error during connect`.
+
+**Cause**: Docker Desktop or the Docker daemon has not started, or your terminal is connected to a context where Docker is unavailable.
+
+**Fix**:
+
+1. Start Docker Desktop and wait until it reports that Docker is running.
+2. Run `docker info` to confirm the daemon is reachable from the same terminal.
+3. If you use WSL, ensure Docker Desktop WSL integration is enabled for the distribution where you cloned the repository.
+4. Re-run `docker compose up -d` after the daemon is available.
 
 ---
 
