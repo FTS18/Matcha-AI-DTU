@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import threading
+import shutil
 from app.api.routes import router as api_router
 from app.core.analysis import _get_tts
 
@@ -29,6 +30,11 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.on_event("startup")
 def startup_event():
+ if shutil.which("ffmpeg") is None:
+  raise RuntimeError(
+   "ERROR: FFmpeg not found. Please install FFmpeg and ensure it is in your PATH. "
+   "See: https://ffmpeg.org/download.html"
+  )
  # Pre-load TTS model in background to avoid blocking startup
  threading.Thread(target=_get_tts, daemon=True).start()
 
@@ -38,10 +44,10 @@ def health_check():
 
 if __name__ == "__main__":
  try:
- print(" Starting Inference Server on http://0.0.0.0:8000")
- uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, log_level="info")
+  print(" Starting Inference Server on http://0.0.0.0:8000")
+  uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, log_level="info")
  except Exception as e:
- print(f" Server failed to start: {e}")
- import traceback
- traceback.print_exc()
+  print(f" Server failed to start: {e}")
+  import traceback
+  traceback.print_exc()
 
