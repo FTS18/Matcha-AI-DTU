@@ -519,15 +519,58 @@ npx tsc
 
 ---
 
+### Error: Docker Desktop is not running
+
+**Problem:** `docker-compose up -d --build` fails with `Cannot connect to the Docker daemon`, or Docker commands hang without listing containers.
+
+**Cause:** Docker Desktop or the Docker daemon is not running yet, so Compose cannot create PostgreSQL, Redis, or MinIO containers.
+
+**Fix:** Open Docker Desktop and wait until it reports that the engine is running. Then retry `docker-compose up -d --build` from the project root and confirm the services are healthy with `docker ps`.
+
+---
+
+### Error: Port `5433` or `6380` is already in use
+
+**Problem:** Docker Compose reports that it cannot bind `0.0.0.0:5433` or `0.0.0.0:6380` when starting `matcha_postgres` or `matcha_redis`.
+
+**Cause:** A local PostgreSQL, Redis, or earlier Matcha container is already using the host port mapped in `docker-compose.yml`.
+
+**Fix:** Stop the process using the port, or change the left side of the port mapping in `docker-compose.yml` and mirror the same host port in your environment values. For example, on macOS/Linux run `lsof -ti:5433 | xargs kill -9` for the conflicting PostgreSQL process, then start the stack again with `docker-compose up -d`.
+
+---
+
+### Error: Container keeps restarting because of volume permissions
+
+**Problem:** `docker ps` shows `Restarting`, or `docker logs matcha_postgres`, `docker logs matcha_redis`, or `docker logs matcha_minio` includes permission errors for `/var/lib/postgresql/data`, `/data`, or a mounted volume.
+
+**Cause:** Docker is reusing a named volume created by another user, an older Docker Desktop state, or a previous failed setup with incompatible permissions.
+
+**Fix:** If you do not need the local development data, reset the containers and volumes with `docker-compose down -v`, then run `docker-compose up -d --build` again. If you need to keep data, inspect the failing container with `docker logs <container-name>` and fix ownership or permissions before restarting it.
+
+---
+
 ### Error: `Connection refused` on port 5433 (Database)
 
-**What it means:** Docker is not running, or the PostgreSQL container hasn't started yet.
+**Problem:** The Orchestrator or Prisma cannot connect to PostgreSQL at `localhost:5433`.
+
+**Cause:** Docker is not running, the PostgreSQL container is still starting, or the local `.env` database URL does not match the Compose port mapping.
 
 **Fix:**
 
 1. Open Docker Desktop and make sure it's running.
 2. Run `docker-compose up -d` from the project root.
 3. Wait ~10 seconds, then run `docker ps` to confirm `matcha_postgres` status shows `Up`.
+4. Check that your Orchestrator `DATABASE_URL` points to `localhost:5433` when running services directly on your host machine.
+
+---
+
+### Error: Cannot connect to PostgreSQL from the Orchestrator
+
+**Problem:** The Orchestrator starts, but API requests or Prisma commands fail with database connection errors.
+
+**Cause:** The database container is unavailable, the `DATABASE_URL` points at the wrong host or port, or the password/database name differs from the values in `docker-compose.yml`.
+
+**Fix:** Confirm PostgreSQL is running with `docker ps` and `docker logs matcha_postgres`. For local development, the URL should use the Compose credentials and host port, for example `postgresql://matcha_user:matcha_password@localhost:5433/matcha_db`. Restart the Orchestrator after editing `.env` so it reloads the connection string.
 
 ---
 
