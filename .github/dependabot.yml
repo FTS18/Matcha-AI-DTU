@@ -1,12 +1,16 @@
-# Dependabot configuration for Matcha AI
+# Dependabot configuration for Matcha AI (Hardened & Quiet Mode)
 version: 2
 updates:
   # Maintain dependencies for npm (Next.js, NestJS, shared packages)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    groups:
+      dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "chore"
@@ -15,8 +19,12 @@ updates:
   - package-ecosystem: "pip"
     directory: "/services/inference"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    groups:
+      python-deps:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "chore"
@@ -25,7 +33,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     labels:
       - "dependencies"
       - "chore"
