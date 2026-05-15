@@ -1,6 +1,7 @@
 import os
 import argparse
 import logging
+import sys
 from SoccerNet.Downloader import SoccerNetDownloader
 
 logging.basicConfig(level=logging.INFO)
@@ -51,6 +52,6 @@ if __name__ == "__main__":
         import SoccerNet
     except ImportError:
         print(" SoccerNet package not found. Run: pip install SoccerNet")
-        exit(1)
+        sys.exit(1)
 
     download_soccernet_data(args.dir, args.tasks)

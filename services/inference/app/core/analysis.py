@@ -1,5 +1,6 @@
 import cv2
 import logging
+import sys
 import requests
 import os
 
@@ -314,8 +315,9 @@ def _detect_gpu_availability():
         if gpu_available:
             logger.info(f" GPU acceleration enabled: {torch.cuda.get_device_name(0)}")
         return gpu_available
-    except:
-        return False
+    except Exception:
+        pass
+    return False
 
 
 GPU_AVAILABLE = _detect_gpu_availability()
@@ -1118,7 +1120,7 @@ def _download_youtube_video(
             elif "_percent_str" in d:
                 try:
                     percent = float(d["_percent_str"].strip("%"))
-                except:
+                except Exception:
                     pass
 
             # Map download (0-100%) to overall progress (0-20%)
@@ -1130,7 +1132,7 @@ def _download_youtube_video(
                     json={"progress": overall_progress, "stage": "downloading"},
                     timeout=1,
                 )
-            except:
+            except Exception:
                 pass
 
     # If range is specified, use it. Otherwise default to first 3 hours as a safety cap.
@@ -1657,7 +1659,7 @@ def analyze_video(
                         continue
                     for i_box, box in enumerate(r.boxes):
                         cls = int(box.cls[0])
-                        conf = float(box.conf[0])
+                        track_conf = float(box.conf[0])
                         label = model.names[cls]
 
                         # Only track person with pose model

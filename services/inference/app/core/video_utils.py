@@ -665,7 +665,7 @@ def create_highlight_reel(
         if p and os.path.exists(p):
             try:
                 os.remove(p)
-            except:
+            except Exception:
                 pass
     trans_file = os.path.join(output_dir, f"v_trans_{match_id}{ar_tag}.mp4")
     if os.path.exists(trans_file) and trans_file != (
@@ -673,7 +673,7 @@ def create_highlight_reel(
     ):
         try:
             os.remove(trans_file)
-        except:
+        except Exception:
             pass
 
     if os.path.exists(final_reel) and os.path.getsize(final_reel) > 1024:
@@ -715,6 +715,6 @@ def precompress_video(video_path: str, match_id: str, config: dict) -> str:
             == 0
         ):
             return compressed_path
-    except:
-        pass
+        except Exception:
+            pass
     return video_path

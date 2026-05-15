@@ -42,7 +42,8 @@ def test_goal_detection_engine():
     try:
         from app.core.goal_detection import GoalDetectionEngine
 
-        engine = GoalDetectionEngine(frame_width=1280, frame_height=720)
+        engine = GoalDetectionEngine()
+        engine.init(frame_w=1280, frame_h=720, fps=30.0)
         logger.info(f" Engine created: {engine.__class__.__name__}")
 
         # Test auto-calibration
