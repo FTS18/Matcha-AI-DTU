@@ -46,17 +46,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getProfile(@Req() req: AuthRequest) {
-    const user = await this.authService.getUserById(req.user.userId);
-    if (!user) {
+    const userProfile = await this.authService.getUserById(req.user.userId);
+    if (!userProfile) {
       throw new UnauthorizedException();
     }
     return {
-      id: user.id,
-      email: user.email,
+      id: userProfile.id,
+      email: userProfile.email,
       name:
-        user.firstName && user.lastName
-          ? `${user.firstName} ${user.lastName}`
-          : user.name || user.email.split('@')[0],
+        userProfile.firstName && userProfile.lastName
+          ? `${userProfile.firstName} ${userProfile.lastName}`
+          : userProfile.firstName || userProfile.email.split('@')[0],
     };
   }
 }
