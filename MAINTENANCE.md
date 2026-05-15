@@ -10,7 +10,7 @@ As of May 2026, the project has undergone a comprehensive stabilization and hard
 | :--- | :--- | :--- |
 | **Frontend Framework** | Next.js 14.2.x | Pinned (Stability over feature-parity) |
 | **UI Runtime** | React 18.2.0 | Pinned (Peer dependency compatibility) |
-| **Backend Framework** | NestJS 10.x | Pinned (Stability) |
+| **Backend Framework** | NestJS 11.x | Pinned (Stability) |
 | **Database ORM** | Prisma 5.22.x | Pinned (Environment compatibility) |
 
 ---
@@ -34,7 +34,7 @@ Upgrading to NestJS 11 is deferred to maintain backend stability and avoid a ful
 We maintain a "Green" status on our CI/CD pipeline and have addressed all critical local build and linting failures.
 
 ### Known Vulnerabilities
-You may notice several High/Moderate vulnerabilities reported by `npm audit` (specifically regarding `next`, `postcss`, and `picomatch`). 
+You may notice **5** High/Moderate vulnerabilities reported by `npm audit` (specifically regarding `next` and `postcss`). 
 *   **Status**: These are known and documented. 
 *   **Reason**: These vulnerabilities exist within the core source code of the Next.js 14 line and its required sub-dependencies. Since we are already on the latest available patch for the 14.x branch (`14.2.35`), these cannot be resolved without a major upgrade to Next.js 15/16.
 *   **Mitigation**: We have prioritized **Functional Stability** and **Build Correctness**. The security risk is managed by ensuring the application environment is hardened and only necessary ports are exposed in production.
