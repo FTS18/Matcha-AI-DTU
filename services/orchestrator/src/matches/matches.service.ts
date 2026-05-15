@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { PrismaClient, EventType } from '@prisma/client';
 import type { Match } from '@matcha/database';
 import { HttpService } from '@nestjs/axios';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { EventsGateway } from '../events/events.gateway';
 import { firstValueFrom } from 'rxjs';
 import * as fs from 'fs';
@@ -23,6 +25,7 @@ export class MatchesService {
   constructor(
     private eventsGateway: EventsGateway,
     private httpService: HttpService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.prisma = new PrismaClient();
   }
@@ -491,6 +494,10 @@ export class MatchesService {
   }
 
   async getGlobalStats() {
+    const cacheKey = 'global_stats';
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
     const [matchesCount, eventsCount, highlightsCount, durationAgg] =
       await Promise.all([
         this.prisma.match.count({ where: { status: 'COMPLETED' } }),
@@ -502,11 +509,14 @@ export class MatchesService {
         }),
       ]);
 
-    return {
+    const stats = {
       totalMatches: matchesCount,
       totalEvents: eventsCount,
       totalHighlights: highlightsCount,
       totalDuration: durationAgg._sum.duration || 0,
     };
+
+    await this.cacheManager.set(cacheKey, stats, 60000); // 1 minute
+    return stats;
   }
 }

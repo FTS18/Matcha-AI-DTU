@@ -19,6 +19,9 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
 
+    // Ensure the server shuts down gracefully on SIGTERM/SIGINT
+    app.enableShutdownHooks();
+
     // Basic security headers via helmet
     app.use(
       helmet({

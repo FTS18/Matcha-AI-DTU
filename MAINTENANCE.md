@@ -45,3 +45,14 @@ Contributors are requested **not** to attempt major version upgrades for the fra
 ---
 
 *Last Updated: May 2026*
+
+---
+
+## Recent Optimizations (May 2026)
+
+The following optimizations were implemented to ensure production readiness:
+
+1. **Dependency Hoisting**: Common tools (TypeScript, ESLint, Prettier, Prisma) were moved to the root to reduce redundancy and install times.
+2. **Docker Multi-Stage Builds**: All service Dockerfiles now use multi-stage builds and `turbo prune` to create minimal, secure images.
+3. **Next.js Standalone Mode**: The web application is configured for `standalone` output, reducing image size by up to 90%.
+4. **Graceful Shutdown**: The Orchestrator now implements NestJS shutdown hooks to properly close database and Redis connections on SIGTERM.

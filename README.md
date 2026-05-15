@@ -55,7 +55,7 @@ graph TD
     Orchestrator --- RDS
 ```
 
-1. **[Frontend Web (apps/web)](./apps/web/README.md)**: A modern Next.js 15 interface. Consumes `@matcha/ui` for standardized components.
+1. **[Frontend Web (apps/web)](./apps/web/README.md)**: A modern Next.js 14.2 interface (Security Hardened). Consumes `@matcha/ui` for standardized components.
 2. **[Frontend Mobile (apps/mobile)](./apps/mobile/README.md)**: An Expo (React Native) app sharing business logic via `@matcha/shared`.
 3. **[Orchestrator (services/orchestrator)](./services/orchestrator/README.md)**: NestJS backend for API orchestration and database management.
 4. **[Shared Tooling (packages/\*)](./packages)**:

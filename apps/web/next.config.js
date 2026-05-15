@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    output: 'standalone',
     transpilePackages: [
         '@matcha/shared',
+        '@matcha/ui',
+        '@matcha/theme',
         '@react-pdf/renderer',
         'socket.io-client',
         'engine.io-client',

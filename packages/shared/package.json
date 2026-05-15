@@ -20,6 +20,6 @@
   "socket.io-client": "^4.8.3"
  },
  "devDependencies": {
-  "typescript": "^5.9.3"
+  "@matcha/typescript-config": "*"
  }
 }

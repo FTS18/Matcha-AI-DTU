@@ -2,7 +2,10 @@
  "name": "@matcha/ui",
  "version": "1.0.0",
  "main": "dist/index.js",
+ "module": "dist/index.js",
  "types": "dist/index.d.ts",
+ "type": "module",
+ "sideEffects": false,
  "license": "MIT",
  "scripts": {
   "build": "tsc"
@@ -12,19 +15,22 @@
   "@matcha/theme": "*",
   "@react-pdf/renderer": "^4.5.1",
   "clsx": "^2.1.1",
-  "framer-motion": "^12.38.0",
-  "lucide-react": "^0.574.0",
-  "react-dom": "^18.2.0",
   "socket.io-client": "^4.8.3",
   "tailwind-merge": "^3.6.0"
  },
  "devDependencies": {
   "@matcha/typescript-config": "*",
-  "@types/react": "^18.2.0",
+  "@types/react": "^18.3.28",
+  "framer-motion": "^12.38.0",
+  "lucide-react": "^0.574.0",
   "react": "^18.2.0",
+  "react-dom": "^18.2.0",
   "typescript": "^5.9.3"
  },
  "peerDependencies": {
-  "react": "^18"
+  "framer-motion": "^12.38.0",
+  "lucide-react": "^0.574.0",
+  "react": "^18.2.0",
+  "react-dom": "^18.2.0"
  }
 }
