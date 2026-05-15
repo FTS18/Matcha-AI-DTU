@@ -51,11 +51,13 @@ export class MatchesService {
       const sanitizedName = path
         .basename(file.originalname)
         .replace(/[^a-zA-Z0-9.-]/g, '_');
-      
+
       const ext = path.extname(sanitizedName).toLowerCase();
       const allowedExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
       if (!allowedExtensions.includes(ext)) {
-        throw new Error(`Invalid file extension: ${ext}. Allowed: ${allowedExtensions.join(', ')}`);
+        throw new Error(
+          `Invalid file extension: ${ext}. Allowed: ${allowedExtensions.join(', ')}`,
+        );
       }
 
       fileName = `${Date.now()}-${sanitizedName}`;

@@ -2,7 +2,7 @@ import os
 import logging
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 import cv2
 import numpy as np
 
@@ -715,6 +715,6 @@ def precompress_video(video_path: str, match_id: str, config: dict) -> str:
             == 0
         ):
             return compressed_path
-        except Exception:
-            pass
+    except Exception:
+        pass
     return video_path

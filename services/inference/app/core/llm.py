@@ -92,6 +92,7 @@ def _get_gemini():
             logger.warning(f"Gemini unavailable: {e}")
             _gemini_model = False
             return None
+    return None
 
 
 def _call_gemini_with_retry(
@@ -164,6 +165,8 @@ def _call_gemini_with_retry(
                         time.sleep(wait)
                         continue
                 raise
+        # This part should ideally never be reached due to internal raises
+        raise RuntimeError("Gemini call failed after all retries or exhausted quota")
 
 
 def _get_gemini_vision():
@@ -308,7 +311,21 @@ def analyze_frames_batch(frames_with_ts: List[Tuple[np.ndarray, float]]) -> List
                 "description": str(e)[:60],
             }
 
-    return results  # type: ignore
+    # Ensure results is fully populated with something before returning
+    final_results = []
+    for r in results:
+        if r is None:
+            final_results.append(
+                {
+                    "event_type": "NONE",
+                    "confidence": 0.0,
+                    "description": "Processing error",
+                }
+            )
+        else:
+            final_results.append(r)
+
+    return final_results
 
 
 def analyze_frame_with_vision(

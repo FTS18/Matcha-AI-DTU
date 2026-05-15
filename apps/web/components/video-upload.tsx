@@ -5,20 +5,14 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import {
-  Upload,
-  FileVideo,
-  X,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-  Clock,
   Youtube,
   Scissors,
+  Clock,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from "socket.io-client";
-import { createApiClient, WsEvents, PIPELINE_STAGES, isYoutubeUrl, extractYoutubeId } from "@matcha/shared";
+import { createApiClient, WsEvents, PIPELINE_STAGES, isYoutubeUrl } from "@matcha/shared";
 
 const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:4000";
 const api = createApiClient(ORCHESTRATOR_URL);

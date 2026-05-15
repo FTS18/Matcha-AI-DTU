@@ -4,7 +4,6 @@ import { Footer } from "@/components/layout/Footer";
 import { SplashScreen } from "@/components/layout/SplashScreen";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminProvider } from "@/contexts/AdminContext";
-import { env } from "@/lib/env";
 import "./globals.css";
 
 export const metadata: Metadata = {

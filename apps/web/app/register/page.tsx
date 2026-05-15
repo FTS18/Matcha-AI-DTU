@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { createApiClient } from "@matcha/shared";
 import { Loader2, ArrowRight } from "lucide-react";
@@ -17,7 +16,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
-  const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

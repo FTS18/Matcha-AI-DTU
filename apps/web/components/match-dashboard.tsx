@@ -7,11 +7,6 @@ import {
   Loader2,
   Upload,
   XCircle,
-  LayoutGrid,
-  Clock,
-  AlertTriangle,
-  PlayCircle,
-  BarChart3,
   Scissors,
   RefreshCw,
 } from "lucide-react";
