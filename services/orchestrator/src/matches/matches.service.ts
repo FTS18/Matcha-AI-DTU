@@ -3,7 +3,7 @@ import { PrismaClient, EventType } from '@prisma/client';
 import type { Match } from '@matcha/database';
 import { HttpService } from '@nestjs/axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 import { EventsGateway } from '../events/events.gateway';
 import { firstValueFrom } from 'rxjs';
 import * as fs from 'fs';
