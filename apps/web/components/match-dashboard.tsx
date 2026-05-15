@@ -9,6 +9,9 @@ import {
   XCircle,
   Scissors,
   RefreshCw,
+  LayoutGrid,
+  AlertTriangle,
+  PlayCircle,
 } from "lucide-react";
 import { useMatches } from "@/hooks/useMatches";
 import { motion, AnimatePresence } from "framer-motion";

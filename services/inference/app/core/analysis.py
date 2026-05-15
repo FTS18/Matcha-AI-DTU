@@ -509,6 +509,20 @@ import tempfile
 
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://localhost:4000/api/v1")
 
+# ── Modular Imports (Refactored) ─────────────────────────────────────────────
+from app.core.scoring.engine import (
+    compute_context_score,
+    score_goal,
+    score_save,
+    score_foul,
+)
+from app.core.audio_engine import calculate_dynamic_audio_volumes
+from app.core.highlight_manager import (
+    select_highlights,
+    select_highlights_with_narrative,
+    group_related_events,
+)
+
 # Use YOLOv8n-pose for much faster CPU inference (Nano model)
 model = YOLO("yolov8n-pose.pt")
 ball_model = YOLO("yolov8n.pt")
@@ -544,56 +558,7 @@ MODEL_MIN_GAP: Dict[str, float] = {
 DEFAULT_MIN_GAP = 20.0
 
 # ── Event weight table (out of 10) ───────────────────────────────────────────
-EVENT_WEIGHTS = {
-    "GOAL": 10.0,
-    "PENALTY": 9.5,
-    "RED_CARD": 9.0,
-    "SAVE": 8.0,
-    "YELLOW_CARD": 7.0,
-    "CELEBRATION": 6.5,  # Vision AI detected celebration
-    "FOUL": 6.0,
-    "HIGHLIGHT": 5.5,  # Fallback generic highlight from motion
-    "TACKLE": 5.0,
-    "CORNER": 4.0,
-    "OFFSIDE": 2.5,
-}
-W1, W2, W3, W4 = 0.40, 0.20, 0.25, 0.15
-
-
-# ── Scoring helpers ───────────────────────────────────────────────────────────
-def time_context_weight(timestamp, duration):
-    """Late-game moments carry more weight."""
-    if duration <= 0:
-        return 0.70
-    pct = timestamp / duration
-    if pct > 0.92:
-        return 1.00  # injury time / dying minutes
-    if pct > 0.85:
-        return 0.95  # final 10 min
-    if pct > 0.70:
-        return 0.85  # last quarter
-    if pct > 0.50:
-        return 0.75  # second half
-    if pct > 0.45:
-        return 0.60  # around half-time
-    return 0.65  # first half
-
-
-def compute_context_score(event_type, motion_score, timestamp, duration, confidence):
-    ew = EVENT_WEIGHTS.get(event_type, 4.0) / 10.0
-    audio = min(motion_score * 1.3, 1.0)
-    tw = time_context_weight(timestamp, duration)
-    base = (ew * W1) + (audio * W2) + (motion_score * W3) + (tw * W4)
-    score = base * (0.5 + 0.5 * confidence)
-    if duration > 0 and (timestamp / duration) > 0.85 and event_type == "GOAL":
-        score *= 2.0  # late goals doubled
-    if (
-        duration > 0
-        and (timestamp / duration) < 0.08
-        and event_type in ("SAVE", "TACKLE")
-    ):
-        score *= 1.3  # frantic early-game bump
-    return round(min(score * 10.0, 10.0), 2)
+# Scoring weights and logic moved to app.core.scoring.engine
 
 
 # ── Fallback commentary ───────────────────────────────────────────────────────
@@ -653,50 +618,7 @@ def _fallback_commentary(event_type, final_score, timestamp, duration):
 # Summary logic moved to app.core.llm
 
 
-# ── Highlight selection ───────────────────────────────────────────────────────
-def select_highlights(scored_events, duration, top_n=5, clip_secs=30.0):
-    """
-    Top-N non-overlapping highlights, spread across the full video.
-    Two rules:
-    1. No time-window overlap between clips.
-    2. Clip centres must be at least 15% of duration apart (prevents same-scene
-    from different YOLO frames appearing twice).
-    """
-    if not scored_events:
-        return []
-    sorted_evs = sorted(scored_events, key=lambda x: x["finalScore"], reverse=True)
-    min_spread = max(30.0, duration * 0.15)  # at least 15% of the video length
-    used, highlights = [], []
-
-    for ev in sorted_evs:
-        if len(highlights) >= top_n:
-            break
-        ts = ev["timestamp"]
-        start = max(0.0, ts - clip_secs * 0.35)
-        end = min(duration if duration > 0 else ts + 60.0, ts + clip_secs * 0.65)
-
-        # Rule 1 – no overlap
-        if any(not (end <= w[0] or start >= w[1]) for w in used):
-            continue
-
-        # Rule 2 – clips must be spread out
-        if any(
-            abs(ts - (h["startTime"] + (h["endTime"] - h["startTime"]) / 2))
-            < min_spread
-            for h in highlights
-        ):
-            continue
-
-        used.append((start, end))
-        highlights.append(
-            {
-                "startTime": round(start, 1),
-                "endTime": round(end, 1),
-                "score": ev["finalScore"],
-                "eventType": ev["type"],
-                "commentary": ev.get("commentary", ""),
-            }
-        )
+# Highlight selection logic moved to app.core.highlight_manager
 
     return sorted(highlights, key=lambda x: x["startTime"])
 
@@ -900,136 +822,10 @@ def analyze_team_formation(track_frames: list, team_colors: list) -> dict:
         return {"formation": "unknown", "spacing": 0.0, "cohesion": 0.0}
 
 
-# ── PHASE 2 OPTIMIZATION 3: DYNAMIC AUDIO MIXING ──────────────────────────────
-def calculate_dynamic_audio_volumes(motion_score: float, emotion_score: float) -> dict:
-    """
-    Calculate audio volumes dynamically based on match intensity.
-    Higher intensity = louder crowd, reduced music, emphasized commentary.
-    """
-    # Normalize inputs to 0-1 range
-    motion = max(0.0, min(1.0, motion_score))
-    emotion = max(0.0, min(1.0, emotion_score / 10.0))
-
-    # Average intensity
-    intensity = (motion + emotion) / 2.0
-
-    # Dynamic volume adjustments
-    volumes = {
-        "music": max(0.02, 0.15 * (1.0 - intensity)),  # Fade out in intense moments
-        "crowd": 0.25 + (0.35 * intensity),  # Ramp up with intensity
-        "roar": 0.1 + (0.4 * intensity),  # Roar on big moments
-        "commentary": 1.2 + (0.3 * intensity),  # Always prominent, boost on action
-    }
-
-    # Normalize to prevent clipping
-    max_vol = max(volumes.values())
-    if max_vol > 1.5:
-        scale = 1.5 / max_vol
-        volumes = {k: round(v * scale, 3) for k, v in volumes.items()}
-    else:
-        volumes = {k: round(v, 3) for k, v in volumes.items()}
-
-    return volumes
+# Audio mixing logic moved to app.core.audio_engine
 
 
-# ── PHASE 2 OPTIMIZATION 4: SMART HIGHLIGHT SELECTION ────────────────────────
-def group_related_events(scored_events: list, min_gap_secs: float = 15.0) -> list:
-    """
-    Group related events (e.g., build-up + goal) for better narrative flow.
-    Returns events with group_id for clustering.
-    """
-    if not scored_events:
-        return []
-
-    grouped = []
-    current_group = 0
-    last_group_time = scored_events[0]["timestamp"]
-
-    for event in scored_events:
-        time_since_group = event["timestamp"] - last_group_time
-
-        # Start new group if gap is large
-        if time_since_group > min_gap_secs:
-            current_group += 1
-            last_group_time = event["timestamp"]
-
-        event_copy = event.copy()
-        event_copy["group_id"] = current_group
-        event_copy["time_in_group"] = round(time_since_group, 2)
-        grouped.append(event_copy)
-
-    return grouped
-
-
-def select_highlights_with_narrative(
-    scored_events: list,
-    duration: float,
-    top_n: int = 5,
-    clip_secs: float = 30.0,
-    use_groups: bool = True,
-) -> list:
-    """
-    Enhanced highlight selection that considers narrative flow and event grouping.
-    Groups build-up sequences with their payoff (e.g., goal sequences).
-    """
-    if not scored_events:
-        return []
-
-    # Group related events if enabled
-    if use_groups:
-        grouped_events = group_related_events(scored_events, min_gap_secs=15.0)
-    else:
-        grouped_events = scored_events
-
-    # Sort by final score
-    sorted_evs = sorted(grouped_events, key=lambda x: x["finalScore"], reverse=True)
-
-    min_spread = max(30.0, duration * 0.15)
-    used = []
-    highlights = []
-
-    for ev in sorted_evs:
-        if len(highlights) >= top_n:
-            break
-
-        ts = ev["timestamp"]
-
-        # Extend clip backwards if there's a group with lead-up events
-        start_buffer = (
-            clip_secs * 0.50
-            if "group_id" in ev and ev.get("time_in_group", 0) > 10
-            else clip_secs * 0.35
-        )
-
-        start = max(0.0, ts - start_buffer)
-        end = min(duration if duration > 0 else ts + 60.0, ts + clip_secs * 0.65)
-
-        # Rule 1: No overlap
-        if any(not (end <= w[0] or start >= w[1]) for w in used):
-            continue
-
-        # Rule 2: Clips spread out
-        if any(
-            abs(ts - (h["startTime"] + (h["endTime"] - h["startTime"]) / 2))
-            < min_spread
-            for h in highlights
-        ):
-            continue
-
-        used.append((start, end))
-        highlights.append(
-            {
-                "startTime": round(start, 1),
-                "endTime": round(end, 1),
-                "score": ev["finalScore"],
-                "eventType": ev["type"],
-                "commentary": ev.get("commentary", ""),
-                "group_id": ev.get("group_id", -1),
-                "narrative_context": True if use_groups else False,
-            }
-        )
-
-    return sorted(highlights, key=lambda x: x["startTime"])
+# Narrative grouping and smart highlights moved to app.core.highlight_manager
 
 
 def _report_failure(match_id):
