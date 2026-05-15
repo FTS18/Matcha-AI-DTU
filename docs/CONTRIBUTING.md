@@ -1,4 +1,4 @@
-﻿# Contributing to Matcha-AI-DTU
+# Contributing to Matcha-AI-DTU
 
 Thank you for considering a contribution to Matcha-AI-DTU. This project is a complex monorepo blending Next.js, NestJS, and a Python computer vision and LLM pipeline. Every contribution — from a one-line documentation fix to a full feature implementation — is valued.
 
@@ -171,14 +171,9 @@ Most tunable parameters are in the `CONFIG` dict at the top of `analysis.py`. Ed
 
 ```python
 CONFIG = {
-
-"MOTION_PEAK_THRESHOLD": 0.45, # Raise to detect fewer, more dramatic highlights
-
-"HIGHLIGHT_COUNT": 5,
-
-# Number of clips in the highlight reel
-
-"COMPRESS_SIZE_THRESHOLD_MB": 100, # Pre-compress videos larger than this
+    "MOTION_PEAK_THRESHOLD": 0.45,  # Raise to detect fewer, more dramatic highlights
+    "HIGHLIGHT_COUNT": 5,           # Number of clips in the highlight reel
+    "COMPRESS_SIZE_THRESHOLD_MB": 100,  # Pre-compress videos larger than this
 }
 ```
 
@@ -204,19 +199,9 @@ The 3-tier TTS system selects quality automatically. To change voices:
 
 ```python
 # In services/inference/app/core/analysis.py
-_KOKORO_MODEL
-
-= "hexgrad/Kokoro-82M"
-
-# Change to any HF TTS model
-_KOKORO_VOICE
-
-= "af_sky"
-
-# Kokoro voice ID
-_EDGE_TTS_VOICE = "en-GB-RyanNeural"
-
-# edge-tts voice name
+_KOKORO_MODEL   = "hexgrad/Kokoro-82M"   # Change to any HF TTS model
+_KOKORO_VOICE   = "af_sky"               # Kokoro voice ID
+_EDGE_TTS_VOICE = "en-GB-RyanNeural"     # edge-tts voice name
 ```
 
 Available Kokoro voice IDs: `af_sky`, `af_bella`, `am_adam`, `am_michael`, `bf_emma`, `bm_george`, `bm_lewis`

@@ -28,7 +28,7 @@ def _get_model():
  global _model
  if _model is not None:
  return _model
- api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBA14BthftWm1rQGebShF7fxs95PdXEAMo")
+ api_key = os.getenv("GEMINI_API_KEY")
  if not api_key:
  logger.error("GEMINI_API_KEY not set — cannot analyze video")
  return None

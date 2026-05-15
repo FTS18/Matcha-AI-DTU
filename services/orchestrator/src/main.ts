@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
+import helmet from 'helmet';
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '100mb';
 const URLENCODED_LIMIT = process.env.URLENCODED_BODY_LIMIT || '1mb';
@@ -14,6 +15,12 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
 async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
+
+    // Basic security headers via helmet
+    app.use(helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      contentSecurityPolicy: false, // Disabled as this is an API, not a website
+    }));
 
     // API versioning — all routes live under /api/v1
     app.setGlobalPrefix('api/v1');

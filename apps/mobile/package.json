@@ -22,13 +22,18 @@
  "react-native": "0.76.3",
  "react-native-safe-area-context": "4.12.0",
  "react-native-screens": "~4.1.0",
- "socket.io-client": "^4.8.1",
+ "socket.io-client": "^4.8.3",
  "@react-native-async-storage/async-storage": "^2.1.0"
  },
  "devDependencies": {
  "@babel/core": "^7.25.2",
  "@types/react": "~18.3.12",
  "typescript": "^5.3.3"
+ },
+ "overrides": {
+  "tar": "^6.2.1",
+  "xmldom": "^0.9.5",
+  "@xmldom/xmldom": "^0.9.5"
  },
  "private": true
 }
