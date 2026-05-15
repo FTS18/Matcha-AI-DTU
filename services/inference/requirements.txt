@@ -5,7 +5,7 @@ ultralytics>=8.1.0
 opencv-python
 numpy<2.0.0
 torch>=2.0.0
-torchaudio>=2.0.0
+torchaudio>=2.5.1+cu121
 torchvision>=0.15.0
 google-generativeai==0.8.3
 huggingface-hub[inference]>=0.25.0
