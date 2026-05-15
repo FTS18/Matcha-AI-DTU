@@ -51,7 +51,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.4.5",
+    "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^10.0.1",
     "@nestjs/testing": "^11.1.21",
     "@types/bcryptjs": "^2.4.6",
