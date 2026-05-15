@@ -13,6 +13,7 @@ Both outputs are attached to the orchestrator completion payload.
 import cv2
 import numpy as np
 import logging
+import math
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -237,16 +238,26 @@ def estimate_ball_speed(track_frames: list, fps: float) -> float:
  positions: List[Tuple[float, float, float]] = [] # (t, cx_norm, cy_norm)
 
  for tf in track_frames:
+ try:
  t = float(tf.get("t", 0))
+ except (TypeError, ValueError):
+ continue
+ if not math.isfinite(t):
+ continue
+
  balls = tf.get("b", [])
  if balls:
  b = balls[0] # take the primary ball
  if len(b) >= 4:
+ try:
  cx = float(b[0]) + float(b[2]) / 2
  cy = float(b[1]) + float(b[3]) / 2
+ except (TypeError, ValueError):
+ continue
+ if math.isfinite(cx) and math.isfinite(cy):
  positions.append((t, cx, cy))
 
- if len(positions) < 2:
+ if len(positions) < 10:
  return 0.0
 
  speeds_mps: list[float] = []
@@ -264,9 +275,10 @@ def estimate_ball_speed(track_frames: list, fps: float) -> float:
  dy_m = (y2 - y1) * 68.0 # pitch height ≈ 68 m
  dist_m = (dx_m**2 + dy_m**2) ** 0.5
  speed_mps = dist_m / dt
+ if math.isfinite(speed_mps):
  speeds_mps.append(speed_mps)
 
- if not speeds_mps:
+ if len(speeds_mps) < 10:
  return 0.0
 
  # 95th percentile — ignores occasional noise spikes
