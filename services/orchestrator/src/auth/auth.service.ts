@@ -1,9 +1,6 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-} from '@nestjs/common';
-import { PrismaClient } from '@matcha/database';
+import { Injectable, ConflictException } from '@nestjs/common';
+import { PrismaClient, User } from '@matcha/database';
+import { RegisterInput } from '@matcha/shared';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
@@ -15,7 +12,10 @@ export class AuthService {
     this.prisma = new PrismaClient();
   }
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(
+    email: string,
+    pass: string,
+  ): Promise<Omit<User, 'password'> | null> {
     const lowerEmail = email.toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: lowerEmail },
@@ -23,20 +23,22 @@ export class AuthService {
     if (!user) return null;
     const isMatch = await bcrypt.compare(pass, user.password);
     if (isMatch) {
-      const { password, ...result } = user;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...result } = user;
       return result;
     }
     return null;
   }
 
-  async getUserById(id: string): Promise<any> {
+  async getUserById(id: string): Promise<Omit<User, 'password'> | null> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) return null;
-    const { password, ...result } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...result } = user;
     return result;
   }
 
-  async login(user: any) {
+  login(user: User) {
     const payload = { email: user.email, sub: user.id };
     return {
       access_token: this.jwtService.sign(payload),
@@ -46,12 +48,12 @@ export class AuthService {
         name:
           user.firstName && user.lastName
             ? `${user.firstName} ${user.lastName}`
-            : user.name || user.email.split('@')[0],
+            : user.firstName || user.email.split('@')[0],
       },
     };
   }
 
-  async register(data: any): Promise<any> {
+  async register(data: RegisterInput): Promise<Omit<User, 'password'>> {
     const lowerEmail = data.email.toLowerCase();
     const existing = await this.prisma.user.findUnique({
       where: { email: lowerEmail },
@@ -73,7 +75,8 @@ export class AuthService {
       },
     });
 
-    const { password, ...result } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...result } = user;
     return result;
   }
 }

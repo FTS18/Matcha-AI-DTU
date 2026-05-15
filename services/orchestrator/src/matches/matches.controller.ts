@@ -22,7 +22,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { MatchesService } from './matches.service';
 import type { Match } from '@matcha/database';
-import type { AnalysisPayload } from '@matcha/shared';
+import type { AnalysisPayload, MatchEvent, TrackFrame } from '@matcha/shared';
 import 'multer';
 
 interface AuthRequestOptional extends Express.Request {
@@ -75,7 +75,9 @@ export class MatchesController {
     try {
       const parsed = new URL(url);
       if (
-        !['youtube.com', 'www.youtube.com', 'youtu.be'].includes(parsed.hostname)
+        !['youtube.com', 'www.youtube.com', 'youtu.be'].includes(
+          parsed.hostname,
+        )
       ) {
         throw new BadRequestException('Must be a YouTube URL');
       }
@@ -90,9 +92,12 @@ export class MatchesController {
         `${inferenceUrl}/api/v1/yt-info?url=${encodeURIComponent(url)}`,
       );
       if (!resp.ok) throw new Error(await resp.text());
-      return resp.json();
-    } catch (e: any) {
-      throw new BadRequestException(`Could not fetch video info: ${e.message}`);
+      return resp.json() as Promise<Record<string, any>>;
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      throw new BadRequestException(
+        `Could not fetch video info: ${errorMessage}`,
+      );
     }
   }
 
@@ -176,14 +181,14 @@ export class MatchesController {
   }
 
   @Post(':id/live-event')
-  addLiveEvent(@Param('id') id: string, @Body() body: object) {
+  addLiveEvent(@Param('id') id: string, @Body() body: Partial<MatchEvent>) {
     return this.matchesService.addLiveEvent(id, body);
   }
 
   @Post(':id/tracking-update')
-  async trackingUpdate(
+  trackingUpdate(
     @Param('id') id: string,
-    @Body() body: { frames: object[] },
+    @Body() body: { frames: TrackFrame[] },
   ) {
     return this.matchesService.pushTrackingUpdate(id, body?.frames ?? []);
   }

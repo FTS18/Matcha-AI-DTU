@@ -1,6 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import * as http from 'http';
 import { AppModule } from './app.module';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Request, Response, NextFunction } from 'express';
 import * as bodyParser from 'body-parser';
 import helmet from 'helmet';
 
@@ -17,21 +20,35 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     // Basic security headers via helmet
-    app.use(helmet({
-      crossOriginResourcePolicy: { policy: "cross-origin" },
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "blob:", "https:"],
-          connectSrc: ["'self'", "https:", "http:"],
+    app.use(
+      helmet({
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+            connectSrc: ["'self'", 'https:', 'http:'],
+          },
         },
-      },
-    }));
+      }),
+    );
 
     // API versioning — all routes live under /api/v1
     app.setGlobalPrefix('api/v1');
+
+    // Swagger Documentation
+    const config = new DocumentBuilder()
+      .setTitle('Matcha AI Orchestrator')
+      .setDescription(
+        'The core API for managing football match analysis and real-time events.',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
 
     // CORS — dynamically allow custom arrays or any localhost/127.0.0.1 port.
 
@@ -54,9 +71,8 @@ async function bootstrap() {
     });
 
     // Global headers for Cross-Origin Isolation (COEP/CORP/COOP)
-    app.use((req: any, res: any, next: any) => {
+    app.use((_req: Request, res: Response, next: NextFunction) => {
       res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-      // res.setHeader('Access-Control-Allow-Origin', '*'); // REMOVED: Managed by CORS middleware
       next();
     });
 
@@ -73,7 +89,7 @@ async function bootstrap() {
     app.use(bodyParser.json({ limit: JSON_BODY_LIMIT }));
     app.use(bodyParser.urlencoded({ limit: URLENCODED_LIMIT, extended: true }));
 
-    const server = await app.listen(PORT);
+    const server = (await app.listen(PORT)) as http.Server;
     server.setTimeout(REQUEST_TIMEOUT);
 
     console.log(` Orchestrator running on http://localhost:${PORT}/api/v1`);
@@ -83,4 +99,4 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+void bootstrap();

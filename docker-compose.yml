@@ -47,6 +47,51 @@ services:
       timeout: 20s
       retries: 3
 
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+    container_name: matcha_orchestrator
+    environment:
+      - DATABASE_URL=postgresql://matcha_user:matcha_password@postgres:5432/matcha_db?schema=public
+      - INFERENCE_URL=http://inference:8000
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-super_secret_matcha_key}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+
+  inference:
+    build:
+      context: services/inference
+      dockerfile: Dockerfile
+    container_name: matcha_inference
+    environment:
+      - ORCHESTRATOR_URL=http://orchestrator:4000
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/inference/models:/app/models
+      - ./uploads:/app/uploads
+    # GPU support (optional, commented out by default)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
 volumes:
   postgres_data:
   redis_data:

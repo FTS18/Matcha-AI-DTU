@@ -23,7 +23,7 @@ export class EventsGateway {
     @MessageBody() matchId: string,
     @ConnectedSocket() client: Socket,
   ) {
-    client.join(matchId);
+    void client.join(matchId);
     return { event: 'joined', data: matchId };
   }
 }

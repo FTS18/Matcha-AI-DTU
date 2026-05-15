@@ -7,7 +7,13 @@ import { firstValueFrom } from 'rxjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import 'multer';
-import { WsEvents, isYoutubeUrl, AnalysisPayload } from '@matcha/shared';
+import {
+  WsEvents,
+  isYoutubeUrl,
+  AnalysisPayload,
+  TrackFrame,
+  MatchEvent,
+} from '@matcha/shared';
 
 @Injectable()
 export class MatchesService {
@@ -39,7 +45,9 @@ export class MatchesService {
     } else if (file.buffer) {
       // Fallback for memoryStorage
       // Sanitize filename to prevent path traversal
-      const sanitizedName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.-]/g, '_');
+      const sanitizedName = path
+        .basename(file.originalname)
+        .replace(/[^a-zA-Z0-9.-]/g, '_');
       fileName = `${Date.now()}-${sanitizedName}`;
       const uploadsDir = path.join(process.cwd(), '..', '..', 'uploads');
 
@@ -128,7 +136,7 @@ export class MatchesService {
               end_time: endTime,
             },
             { timeout: 30000 },
-          ) as any,
+          ),
         );
         return; // Success
       } catch (error) {
@@ -183,7 +191,7 @@ export class MatchesService {
     });
   }
 
-  addLiveEvent(id: string, event: any) {
+  addLiveEvent(id: string, event: Partial<MatchEvent>) {
     /**
      * Called by the inference service for EACH detected event immediately,
      * before the full analysis completes. We broadcast it via WebSocket so
@@ -197,7 +205,7 @@ export class MatchesService {
     return { ok: true };
   }
 
-  async pushTrackingUpdate(id: string, frames: any[]) {
+  pushTrackingUpdate(id: string, frames: TrackFrame[]) {
     /**
      * Called by the inference service periodically with newly-tracked frames.
      * Broadcasts via WebSocket so the browser overlay updates in real-time
@@ -318,7 +326,7 @@ export class MatchesService {
           thumbnailUrl: thumbnailUrl ?? null,
           topSpeedKmh: topSpeedKmh ?? null,
           ...(videoUrl ? { uploadUrl: videoUrl } : {}),
-        } as any,
+        },
       }),
     ]);
 
@@ -368,7 +376,7 @@ export class MatchesService {
           topSpeedKmh: null,
           summary: null,
           duration: null,
-        } as any,
+        },
       }),
     ]);
 
@@ -378,8 +386,10 @@ export class MatchesService {
     let isYoutube = false;
     try {
       const url = new URL(uploadUrl);
-      isYoutube = ['youtube.com', 'www.youtube.com', 'youtu.be'].includes(url.hostname);
-    } catch (e) {
+      isYoutube = ['youtube.com', 'www.youtube.com', 'youtu.be'].includes(
+        url.hostname,
+      );
+    } catch {
       isYoutube = false;
     }
 
@@ -398,7 +408,7 @@ export class MatchesService {
         `Cannot reconstruct file path from uploadUrl: ${uploadUrl}`,
       );
       await this.prisma.match
-        .update({ where: { id }, data: { status: 'FAILED' } as any })
+        .update({ where: { id }, data: { status: 'FAILED' } })
         .catch(() => {});
       return { ok: false };
     }

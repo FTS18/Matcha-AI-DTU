@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as path from 'path';
-import { join } from 'path';
+import { Response } from 'express';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MatchesModule } from './matches/matches.module';
@@ -21,7 +21,7 @@ import { AuthModule } from './auth/auth.module';
       rootPath: path.join(process.cwd(), '..', '..', 'uploads'),
       serveRoot: '/uploads',
       serveStaticOptions: {
-        setHeaders: (res) => {
+        setHeaders: (res: Response) => {
           res.set('Cross-Origin-Resource-Policy', 'cross-origin');
           res.set('Access-Control-Allow-Origin', '*');
         },

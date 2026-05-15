@@ -5,11 +5,11 @@
  "types": "dist/index.d.ts",
  "license": "MIT",
  "scripts": {
- "build": "tsc"
+  "build": "tsc"
  },
  "devDependencies": {
- "@matcha/typescript-config": "*",
- "tailwindcss": "^4",
- "typescript": "^5.3.3"
+  "@matcha/typescript-config": "*",
+  "tailwindcss": "^4.3.0",
+  "typescript": "^5.9.3"
  }
 }

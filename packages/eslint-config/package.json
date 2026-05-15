@@ -5,15 +5,15 @@
  "license": "MIT",
  "main": "index.js",
  "dependencies": {
- "@eslint/eslintrc": "0.1.0",
- "@nestjs/cli": "7.6.0",
- "@nestjs/schematics": "7.3.1",
- "@typescript-eslint/eslint-plugin": "^8.56.0",
- "@typescript-eslint/parser": "^8.56.0",
- "eslint": "^10.0.1",
- "eslint-config-next": "^16.1.6",
- "eslint-config-prettier": "^9.1.0",
- "eslint-plugin-react": "^7.22.0",
- "next": "15.5.12"
+  "@eslint/eslintrc": "0.1.0",
+  "@nestjs/cli": "7.6.0",
+  "@nestjs/schematics": "7.3.1",
+  "@typescript-eslint/eslint-plugin": "^8.59.3",
+  "@typescript-eslint/parser": "^8.59.3",
+  "eslint": "^10.4.0",
+  "eslint-config-next": "^16.2.6",
+  "eslint-config-prettier": "^9.1.2",
+  "eslint-plugin-react": "^7.37.5",
+  "next": "15.5.12"
  }
 }
