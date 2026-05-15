@@ -1,16 +1,16 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/services/inference/venv/bin/python",
-  "python.linting.enabled": true,
-  "python.linting.pylintEnabled": false,
-  "python.linting.flake8Enabled": false,
-  "python.analysis.typeCheckingMode": "basic",
-  "[python]": {
-    "editor.defaultFormatter": "ms-python.python",
-    "editor.formatOnSave": true
-  },
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/services/inference/app",
-    "${workspaceFolder}/services/inference"
-  ],
-  "python-envs.pythonProjects": []
+ "python.defaultInterpreterPath": "${workspaceFolder}/services/inference/venv/bin/python",
+ "python.linting.enabled": true,
+ "python.linting.pylintEnabled": false,
+ "python.linting.flake8Enabled": false,
+ "python.analysis.typeCheckingMode": "basic",
+ "[python]": {
+ "editor.defaultFormatter": "ms-python.python",
+ "editor.formatOnSave": true
+ },
+ "python.analysis.extraPaths": [
+ "${workspaceFolder}/services/inference/app",
+ "${workspaceFolder}/services/inference"
+ ],
+ "python-envs.pythonProjects": []
 }

@@ -1,13 +1,13 @@
 /** HTTP API client for the Matcha AI orchestrator.
- *  Import this in apps/web and apps/mobile — pass the base URL from your env/constants.
+ * Import this in apps/web and apps/mobile — pass the base URL from your env/constants.
  */
 
 import type { MatchSummary, MatchDetail } from "./types";
 import { fetchWithRetry } from "./utils";
 
 const getAuthHeaders = (): Record<string, string> => {
-  if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('auth_token');
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("auth_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -28,16 +28,31 @@ export function createApiClient(baseUrl: string) {
       fetchWithRetry(`${apiBase}/matches`, { headers: getAuthHeaders() }).then((r) => r.json()),
 
     getMatch: (id: string): Promise<MatchDetail> =>
-      fetchWithRetry(`${apiBase}/matches/${id}`, { headers: getAuthHeaders() }).then((r) => r.json()),
+      fetchWithRetry(`${apiBase}/matches/${id}`, {
+        headers: getAuthHeaders(),
+      }).then((r) => r.json()),
 
-    getStats: (): Promise<{ totalMatches: number; totalEvents: number; totalHighlights: number; totalDuration: number }> =>
-      fetchWithRetry(`${apiBase}/matches/stats`, { headers: getAuthHeaders() }).then((r) => r.json()),
+    getStats: (): Promise<{
+      totalMatches: number;
+      totalEvents: number;
+      totalHighlights: number;
+      totalDuration: number;
+    }> =>
+      fetchWithRetry(`${apiBase}/matches/stats`, {
+        headers: getAuthHeaders(),
+      }).then((r) => r.json()),
 
     deleteMatch: (id: string): Promise<Response> =>
-      fetchWithRetry(`${apiBase}/matches/${id}`, { method: "DELETE", headers: getAuthHeaders() }),
+      fetchWithRetry(`${apiBase}/matches/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }),
 
     reanalyze: (id: string): Promise<Response> =>
-      fetchWithRetry(`${apiBase}/matches/${id}/reanalyze`, { method: "POST", headers: getAuthHeaders() }),
+      fetchWithRetry(`${apiBase}/matches/${id}/reanalyze`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      }),
 
     generateReel: (id: string, aspectRatio: "16:9" | "9:16"): Promise<Response> =>
       fetchWithRetry(`${apiBase}/matches/${id}/reanalyze`, {
@@ -77,7 +92,14 @@ export function createApiClient(baseUrl: string) {
         return r.json();
       }),
 
-    getYtInfo: (url: string): Promise<{ title: string; duration: number; thumbnail: string; channel: string }> =>
+    getYtInfo: (
+      url: string,
+    ): Promise<{
+      title: string;
+      duration: number;
+      thumbnail: string;
+      channel: string;
+    }> =>
       fetchWithRetry(`${apiBase}/matches/yt-info?url=${encodeURIComponent(url)}`, {
         headers: getAuthHeaders(),
       }).then(async (r) => {
@@ -109,23 +131,31 @@ export function createApiClient(baseUrl: string) {
       fetchWithRetry(`${apiBase}/auth/me`, {
         method: "GET",
         headers: getAuthHeaders(),
-      }).then(async (r) => {
-        if (!r.ok) {
-          const err = new Error("Unauthorized") as any;
-          err.status = r.status;
+      })
+        .then(async (r) => {
+          if (!r.ok) {
+            const err = new Error("Unauthorized") as any;
+            err.status = r.status;
+            throw err;
+          }
+          return r.json();
+        })
+        .catch((err) => {
+          // Re-throw with status info so AuthContext can decide what to do
           throw err;
-        }
-        return r.json();
-      }).catch((err) => {
-        // Re-throw with status info so AuthContext can decide what to do
-        throw err;
-      }),
+        }),
 
     /** Update a single highlight (timestamps, eventType, etc.) */
     updateHighlight: (
       matchId: string,
       highlightId: string,
-      data: { startTime?: number; endTime?: number; eventType?: string; score?: number; commentary?: string },
+      data: {
+        startTime?: number;
+        endTime?: number;
+        eventType?: string;
+        score?: number;
+        commentary?: string;
+      },
     ): Promise<any> =>
       fetchWithRetry(`${apiBase}/matches/${matchId}/highlights/${highlightId}`, {
         method: "PATCH",
@@ -141,6 +171,5 @@ export function createApiClient(baseUrl: string) {
       }).then((r) => r.json()),
   };
 }
-
 
 export type ApiClient = ReturnType<typeof createApiClient>;

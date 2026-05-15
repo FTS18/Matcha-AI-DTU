@@ -4,10 +4,29 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Play, Clock, Target, Shield, AlertTriangle,
-  Zap, Star, BarChart3, TrendingUp, Film, Loader2,
-  Trash2, Copy, Check, Trophy, Cpu, Radio,
-  CheckCircle, XCircle, Pencil, X, Save
+  ArrowLeft,
+  Play,
+  Clock,
+  Target,
+  Shield,
+  AlertTriangle,
+  Zap,
+  Star,
+  BarChart3,
+  TrendingUp,
+  Film,
+  Loader2,
+  Trash2,
+  Copy,
+  Check,
+  Trophy,
+  Cpu,
+  Radio,
+  CheckCircle,
+  XCircle,
+  Pencil,
+  X,
+  Save,
 } from "lucide-react";
 import { ScoreBadge, CopyButton, VideoPlayer, useMatchSocket } from "@matcha/ui";
 import dynamic from "next/dynamic";
@@ -15,44 +34,103 @@ import dynamic from "next/dynamic";
 // PDFReportButton wraps both PDFDownloadLink and MatchReportPDF.
 // It must be loaded dynamically with ssr:false — @react-pdf/renderer is
 // ESM-only and crashes if Next.js evaluates it server-side.
-const PDFReportButton = dynamic(
-  () => import("@/components/PDFReportButton"),
-  { ssr: false }
-);
+const PDFReportButton = dynamic(() => import("@/components/PDFReportButton"), {
+  ssr: false,
+});
 
 import type { MatchEvent, Highlight, EmotionScore, TrackFrame, MatchDetail } from "@matcha/shared";
 import {
-  getTop5Moments, countEventsByType, filterEventsByType,
-  getLiveIntensity, avgConfidence, maxScore, formatTime,
+  getTop5Moments,
+  countEventsByType,
+  filterEventsByType,
+  getLiveIntensity,
+  avgConfidence,
+  maxScore,
+  formatTime,
   timeAgo,
-  EVENT_CONFIG as SHARED_EVENT_CONFIG, DEFAULT_EVENT_CONFIG,
-  STATUS_CONFIG, PIPELINE_STAGES,
+  EVENT_CONFIG as SHARED_EVENT_CONFIG,
+  DEFAULT_EVENT_CONFIG,
+  STATUS_CONFIG,
+  PIPELINE_STAGES,
 } from "@matcha/shared";
 import { createApiClient } from "@matcha/shared";
 import { useAdmin } from "@/contexts/AdminContext";
 
 // Web-only props on EVENT_CONFIG (icon, bg, border) — extend the shared logic
 const THEME_MAP: Record<string, { bg: string; border: string; color: string }> = {
-  success: { bg: "bg-emerald-400/15", border: "border-emerald-400/40", color: "text-emerald-400" },
-  warning: { bg: "bg-amber-400/15", border: "border-amber-400/40", color: "text-amber-400" },
-  error: { bg: "bg-red-400/15", border: "border-red-400/40", color: "text-red-400" },
-  info: { bg: "bg-blue-400/15", border: "border-blue-400/40", color: "text-blue-400" },
-  accent: { bg: "bg-purple-400/15", border: "border-purple-400/40", color: "text-purple-400" },
-  neutral: { bg: "bg-zinc-400/15", border: "border-zinc-400/40", color: "text-zinc-400" },
+  success: {
+    bg: "bg-emerald-400/15",
+    border: "border-emerald-400/40",
+    color: "text-emerald-400",
+  },
+  warning: {
+    bg: "bg-amber-400/15",
+    border: "border-amber-400/40",
+    color: "text-amber-400",
+  },
+  error: {
+    bg: "bg-red-400/15",
+    border: "border-red-400/40",
+    color: "text-red-400",
+  },
+  info: {
+    bg: "bg-blue-400/15",
+    border: "border-blue-400/40",
+    color: "text-blue-400",
+  },
+  accent: {
+    bg: "bg-purple-400/15",
+    border: "border-purple-400/40",
+    color: "text-purple-400",
+  },
+  neutral: {
+    bg: "bg-zinc-400/15",
+    border: "border-zinc-400/40",
+    color: "text-zinc-400",
+  },
 };
 
-const EVENT_CONFIG: Record<string, { label: string; bg: string; border: string; color: string; icon: React.ReactNode }> = {
-  GOAL: { ...SHARED_EVENT_CONFIG.GOAL, ...THEME_MAP[SHARED_EVENT_CONFIG.GOAL.theme], icon: <Target className="w-3.5 h-3.5" /> },
-  TACKLE: { ...SHARED_EVENT_CONFIG.TACKLE, ...THEME_MAP[SHARED_EVENT_CONFIG.TACKLE.theme], icon: <Zap className="w-3.5 h-3.5" /> },
-  FOUL: { ...SHARED_EVENT_CONFIG.FOUL, ...THEME_MAP[SHARED_EVENT_CONFIG.FOUL.theme], icon: <AlertTriangle className="w-3.5 h-3.5" /> },
-  SAVE: { ...SHARED_EVENT_CONFIG.SAVE, ...THEME_MAP[SHARED_EVENT_CONFIG.SAVE.theme], icon: <Shield className="w-3.5 h-3.5" /> },
-  Celebrate: { ...SHARED_EVENT_CONFIG.Celebrate, ...THEME_MAP[SHARED_EVENT_CONFIG.Celebrate.theme], icon: <Star className="w-3.5 h-3.5" /> },
+const EVENT_CONFIG: Record<
+  string,
+  {
+    label: string;
+    bg: string;
+    border: string;
+    color: string;
+    icon: React.ReactNode;
+  }
+> = {
+  GOAL: {
+    ...SHARED_EVENT_CONFIG.GOAL,
+    ...THEME_MAP[SHARED_EVENT_CONFIG.GOAL.theme],
+    icon: <Target className="w-3.5 h-3.5" />,
+  },
+  TACKLE: {
+    ...SHARED_EVENT_CONFIG.TACKLE,
+    ...THEME_MAP[SHARED_EVENT_CONFIG.TACKLE.theme],
+    icon: <Zap className="w-3.5 h-3.5" />,
+  },
+  FOUL: {
+    ...SHARED_EVENT_CONFIG.FOUL,
+    ...THEME_MAP[SHARED_EVENT_CONFIG.FOUL.theme],
+    icon: <AlertTriangle className="w-3.5 h-3.5" />,
+  },
+  SAVE: {
+    ...SHARED_EVENT_CONFIG.SAVE,
+    ...THEME_MAP[SHARED_EVENT_CONFIG.SAVE.theme],
+    icon: <Shield className="w-3.5 h-3.5" />,
+  },
+  Celebrate: {
+    ...SHARED_EVENT_CONFIG.Celebrate,
+    ...THEME_MAP[SHARED_EVENT_CONFIG.Celebrate.theme],
+    icon: <Star className="w-3.5 h-3.5" />,
+  },
 };
-const DEFAULT_EVT = { ...DEFAULT_EVENT_CONFIG, ...THEME_MAP[DEFAULT_EVENT_CONFIG.theme], icon: <Star className="w-3.5 h-3.5" /> };
-
-
-
-
+const DEFAULT_EVT = {
+  ...DEFAULT_EVENT_CONFIG,
+  ...THEME_MAP[DEFAULT_EVENT_CONFIG.theme],
+  icon: <Star className="w-3.5 h-3.5" />,
+};
 
 /** Convert seconds → "m:ss" for editable input field */
 function formatTimeInput(secs: number): string {
@@ -71,11 +149,11 @@ function parseTimeInput(str: string): number | null {
   return m * 60 + s;
 }
 
-
 function IntensityChart({ scores, duration }: { scores: EmotionScore[]; duration: number }) {
   if (!scores.length || !duration) return null;
-  const W = 600, H = 60;
-  const pts = scores.map(s => {
+  const W = 600,
+    H = 60;
+  const pts = scores.map((s) => {
     const x = (s.timestamp / duration) * W;
     const y = H - s.motionScore * H;
     return `${x},${y}`;
@@ -97,33 +175,45 @@ function IntensityChart({ scores, duration }: { scores: EmotionScore[]; duration
         </defs>
         {pts.length > 1 && (
           <>
-            <polyline
-              points={[`0,${H}`, ...pts, `${W},${H}`].join(" ")}
-              fill="url(#intensityGrad)" stroke="none"
-            />
+            <polyline points={[`0,${H}`, ...pts, `${W},${H}`].join(" ")} fill="url(#intensityGrad)" stroke="none" />
             <polyline
               points={pts.join(" ")}
-              fill="none" stroke="#10b981" strokeWidth="1.5"
-              strokeLinejoin="round" strokeLinecap="round"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
             />
           </>
         )}
       </svg>
       <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-        <span>0:00</span><span>{formatTime(duration / 2)}</span><span>{formatTime(duration)}</span>
+        <span>0:00</span>
+        <span>{formatTime(duration / 2)}</span>
+        <span>{formatTime(duration)}</span>
       </div>
     </div>
   );
 }
 
 // â”€â”€â”€ Events Timeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function EventsTimeline({ events, duration, onSeek }: { events: MatchEvent[]; duration: number; onSeek: (t: number) => void }) {
+function EventsTimeline({
+  events,
+  duration,
+  onSeek,
+}: {
+  events: MatchEvent[];
+  duration: number;
+  onSeek: (t: number) => void;
+}) {
   if (!duration) return null;
   return (
     <div className="bg-card border border-border p-4">
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="size-4 text-emerald-500" />
-        <span className="text-sm font-semibold text-foreground uppercase tracking-wide">Temporal Event Distribution</span>
+        <span className="text-sm font-semibold text-foreground uppercase tracking-wide">
+          Temporal Event Distribution
+        </span>
         <span className="ml-auto text-xs text-muted-foreground">{events.length} data points</span>
       </div>
       <div className="relative h-8 bg-muted overflow-visible">
@@ -142,7 +232,9 @@ function EventsTimeline({ events, duration, onSeek }: { events: MatchEvent[]; du
         })}
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
-        <span>0:00</span><span>{formatTime(duration / 2)}</span><span>{formatTime(duration)}</span>
+        <span>0:00</span>
+        <span>{formatTime(duration / 2)}</span>
+        <span>{formatTime(duration)}</span>
       </div>
       <div className="flex flex-wrap gap-3 mt-3">
         {Object.entries(EVENT_CONFIG).map(([k, v]) => (
@@ -157,7 +249,15 @@ function EventsTimeline({ events, duration, onSeek }: { events: MatchEvent[]; du
 }
 
 // â”€â”€â”€ Delete Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function DeleteModal({ onConfirm, onCancel, loading }: { onConfirm: () => void; onCancel: () => void; loading: boolean }) {
+function DeleteModal({
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
@@ -215,7 +315,9 @@ export default function MatchDetailPage() {
   const [rejectedHighlights, setRejectedHighlights] = useState<Set<string>>(new Set());
   const [editingHighlight, setEditingHighlight] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
-    startTime: string; endTime: string; eventType: string;
+    startTime: string;
+    endTime: string;
+    eventType: string;
   }>({ startTime: "", endTime: "", eventType: "" });
 
   // Detect screen orientation for responsive aspect ratio
@@ -224,12 +326,12 @@ export default function MatchDetailPage() {
       setIsPortrait(window.innerWidth < 768);
     };
     checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    return () => window.removeEventListener('resize', checkOrientation);
+    window.addEventListener("resize", checkOrientation);
+    return () => window.removeEventListener("resize", checkOrientation);
   }, []);
 
   // seekFnRef: VideoPlayer injects its internal seekTo so parent buttons can seek
-  const videoSeekRef = useRef<(t: number) => void>(() => { });
+  const videoSeekRef = useRef<(t: number) => void>(() => {});
 
   const API_BASE = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:4000";
   const client = useMemo(() => createApiClient(`${API_BASE}`), []);
@@ -247,7 +349,12 @@ export default function MatchDetailPage() {
     // De-dup by time, keep sorted
     const seen = new Set<number>();
     return combined
-      .filter(f => { const k = Math.round(f.t * 10); if (seen.has(k)) return false; seen.add(k); return true; })
+      .filter((f) => {
+        const k = Math.round(f.t * 10);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
       .sort((a, b) => a.t - b.t);
   }, [match?.trackingData, liveTrackingFrames]);
 
@@ -290,7 +397,9 @@ export default function MatchDetailPage() {
     };
   }, [id, client]);
 
-  const seekTo = useCallback((t: number) => { videoSeekRef.current(t); }, []);
+  const seekTo = useCallback((t: number) => {
+    videoSeekRef.current(t);
+  }, []);
 
   const playHighlight = useCallback((h: Highlight) => {
     setActiveHighlight(h);
@@ -302,37 +411,69 @@ export default function MatchDetailPage() {
     try {
       await client.deleteMatch(id);
       router.push("/");
-    } catch { setDeleting(false); }
+    } catch {
+      setDeleting(false);
+    }
   }, [id, router, client]);
 
   const handleReanalyze = useCallback(async () => {
     setReanalyzing(true);
     try {
       await client.reanalyze(id);
-      setMatch(prev => prev ? { ...prev, status: "PROCESSING", trackingData: null, teamColors: null } : prev);
-    } catch { /* ignore */ } finally {
+      setMatch((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "PROCESSING",
+              trackingData: null,
+              teamColors: null,
+            }
+          : prev,
+      );
+    } catch {
+      /* ignore */
+    } finally {
       setReanalyzing(false);
     }
   }, [id, client]);
 
   // ── Highlight accept / reject / edit handlers ──────────────────────────
   const handleAcceptHighlight = useCallback((highlightId: string) => {
-    setAcceptedHighlights(prev => { const s = new Set(prev); s.add(highlightId); return s; });
-    setRejectedHighlights(prev => { const s = new Set(prev); s.delete(highlightId); return s; });
+    setAcceptedHighlights((prev) => {
+      const s = new Set(prev);
+      s.add(highlightId);
+      return s;
+    });
+    setRejectedHighlights((prev) => {
+      const s = new Set(prev);
+      s.delete(highlightId);
+      return s;
+    });
   }, []);
 
-  const handleRejectHighlight = useCallback(async (highlightId: string) => {
-    try {
-      await client.deleteHighlight(id, highlightId);
-      setRejectedHighlights(prev => { const s = new Set(prev); s.add(highlightId); return s; });
-      setMatch(prev => prev ? {
-        ...prev,
-        highlights: prev.highlights.filter(h => h.id !== highlightId),
-      } : prev);
-    } catch (err) {
-      console.error("Failed to reject highlight:", err);
-    }
-  }, [id, client]);
+  const handleRejectHighlight = useCallback(
+    async (highlightId: string) => {
+      try {
+        await client.deleteHighlight(id, highlightId);
+        setRejectedHighlights((prev) => {
+          const s = new Set(prev);
+          s.add(highlightId);
+          return s;
+        });
+        setMatch((prev) =>
+          prev
+            ? {
+                ...prev,
+                highlights: prev.highlights.filter((h) => h.id !== highlightId),
+              }
+            : prev,
+        );
+      } catch (err) {
+        console.error("Failed to reject highlight:", err);
+      }
+    },
+    [id, client],
+  );
 
   const startEditHighlight = useCallback((h: Highlight) => {
     setEditingHighlight(h.id);
@@ -347,33 +488,41 @@ export default function MatchDetailPage() {
     setEditingHighlight(null);
   }, []);
 
-  const saveEditHighlight = useCallback(async (highlightId: string) => {
-    try {
-      const startSecs = parseTimeInput(editForm.startTime);
-      const endSecs = parseTimeInput(editForm.endTime);
-      if (startSecs === null || endSecs === null || endSecs <= startSecs) return;
-      const data: { startTime: number; endTime: number; eventType?: string } = {
-        startTime: startSecs,
-        endTime: endSecs,
-      };
-      if (editForm.eventType) data.eventType = editForm.eventType;
-      await client.updateHighlight(id, highlightId, data);
-      setMatch(prev => {
-        if (!prev) return prev;
-        const updated = prev.highlights.map(h =>
-          h.id === highlightId
-            ? { ...h, startTime: startSecs, endTime: endSecs, eventType: editForm.eventType || h.eventType }
-            : h
-        );
-        // Re-sort by startTime so the list order and seekbar positions stay consistent
-        updated.sort((a, b) => a.startTime - b.startTime);
-        return { ...prev, highlights: updated };
-      });
-      setEditingHighlight(null);
-    } catch (err) {
-      console.error("Failed to update highlight:", err);
-    }
-  }, [id, client, editForm]);
+  const saveEditHighlight = useCallback(
+    async (highlightId: string) => {
+      try {
+        const startSecs = parseTimeInput(editForm.startTime);
+        const endSecs = parseTimeInput(editForm.endTime);
+        if (startSecs === null || endSecs === null || endSecs <= startSecs) return;
+        const data: { startTime: number; endTime: number; eventType?: string } = {
+          startTime: startSecs,
+          endTime: endSecs,
+        };
+        if (editForm.eventType) data.eventType = editForm.eventType;
+        await client.updateHighlight(id, highlightId, data);
+        setMatch((prev) => {
+          if (!prev) return prev;
+          const updated = prev.highlights.map((h) =>
+            h.id === highlightId
+              ? {
+                  ...h,
+                  startTime: startSecs,
+                  endTime: endSecs,
+                  eventType: editForm.eventType || h.eventType,
+                }
+              : h,
+          );
+          // Re-sort by startTime so the list order and seekbar positions stay consistent
+          updated.sort((a, b) => a.startTime - b.startTime);
+          return { ...prev, highlights: updated };
+        });
+        setEditingHighlight(null);
+      } catch (err) {
+        console.error("Failed to update highlight:", err);
+      }
+    },
+    [id, client, editForm],
+  );
 
   // useMemo calls must be above early returns — Rules of Hooks.
   // null-safe defaults ensure they always run unconditionally.
@@ -385,10 +534,9 @@ export default function MatchDetailPage() {
   const avgConf = useMemo(() => avgConfidence(events), [events]);
   const top5Moments = useMemo(() => getTop5Moments(events), [events]);
   const liveIntensity = useMemo(() => getLiveIntensity(emotionScores, currentTime), [emotionScores, currentTime]);
-  const allEventTypes = useMemo(() => Array.from(new Set(events.map(e => e.type))), [events]);
+  const allEventTypes = useMemo(() => Array.from(new Set(events.map((e) => e.type))), [events]);
   const filteredEvents = useMemo(() => filterEventsByType(events, eventTypeFilter), [events, eventTypeFilter]);
   const sortedLive = useMemo(() => [...liveEvents].sort((a, b) => b.timestamp - a.timestamp), [liveEvents]);
-
 
   if (loading) {
     return (
@@ -402,7 +550,9 @@ export default function MatchDetailPage() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-zinc-400 gap-4">
         <Film className="w-12 h-12 opacity-30" />
         <p>Match not found.</p>
-        <Link href="/" className="text-emerald-400 hover:underline text-sm">â† Back to dashboard</Link>
+        <Link href="/" className="text-emerald-400 hover:underline text-sm">
+          â† Back to dashboard
+        </Link>
       </div>
     );
   }
@@ -421,11 +571,7 @@ export default function MatchDetailPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {showDeleteModal && (
-        <DeleteModal
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteModal(false)}
-          loading={deleting}
-        />
+        <DeleteModal onConfirm={handleDelete} onCancel={() => setShowDeleteModal(false)} loading={deleting} />
       )}
 
       {/* ══════ HEADER ══════ */}
@@ -433,7 +579,10 @@ export default function MatchDetailPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-200 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-2 -m-2">
+              <Link
+                href="/"
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-200 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-2 -m-2"
+              >
                 <ArrowLeft className="size-5" /> Back
               </Link>
               <div className="h-5 w-px bg-border/50" />
@@ -443,10 +592,16 @@ export default function MatchDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`inline-flex items-center gap-2 text-xs px-3 py-2 border rounded-lg font-semibold uppercase tracking-wide transition-all
-                ${match.status === "COMPLETED" ? "text-emerald-400 bg-emerald-500/10 border-emerald-400/40"
-                  : match.status === "PROCESSING" ? "text-blue-400 bg-blue-500/10 border-blue-400/40 animate-pulse"
-                    : "text-zinc-400 bg-zinc-500/10 border-zinc-400/20"}`}>
+              <span
+                className={`inline-flex items-center gap-2 text-xs px-3 py-2 border rounded-lg font-semibold uppercase tracking-wide transition-all
+ ${
+   match.status === "COMPLETED"
+     ? "text-emerald-400 bg-emerald-500/10 border-emerald-400/40"
+     : match.status === "PROCESSING"
+       ? "text-blue-400 bg-blue-500/10 border-blue-400/40 animate-pulse"
+       : "text-zinc-400 bg-zinc-500/10 border-zinc-400/20"
+ }`}
+              >
                 {match.status === "PROCESSING" && <div className="size-2 bg-blue-400 rounded-full animate-pulse" />}
                 {match.status === "COMPLETED" && <div className="size-2 bg-emerald-400 rounded-full" />}
                 {match.status}
@@ -491,18 +646,40 @@ export default function MatchDetailPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
-
         {/* ══════ KEY STATS ══════ */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { label: "Duration", value: formatTime(duration), sub: "match length", icon: Clock },
-            { label: "Events", value: match.events.length.toString(), sub: `${(avgConf * 100).toFixed(0)}% confidence`, icon: BarChart3 },
-            { label: "Highlights", value: match.highlights.length.toString(), sub: "top moments", icon: Star },
-            { label: "Top Score", value: topScore.toFixed(1), sub: "max intensity", icon: Zap },
+            {
+              label: "Duration",
+              value: formatTime(duration),
+              sub: "match length",
+              icon: Clock,
+            },
+            {
+              label: "Events",
+              value: match.events.length.toString(),
+              sub: `${(avgConf * 100).toFixed(0)}% confidence`,
+              icon: BarChart3,
+            },
+            {
+              label: "Highlights",
+              value: match.highlights.length.toString(),
+              sub: "top moments",
+              icon: Star,
+            },
+            {
+              label: "Top Score",
+              value: topScore.toFixed(1),
+              sub: "max intensity",
+              icon: Zap,
+            },
           ].map((stat) => {
             const IconComp = stat.icon;
             return (
-              <div key={stat.label} className="bg-card border border-border/50 p-4 sm:p-5 rounded-xl hover:border-primary/40 transition-all duration-300 hover:bg-card/80">
+              <div
+                key={stat.label}
+                className="bg-card border border-border/50 p-4 sm:p-5 rounded-xl hover:border-primary/40 transition-all duration-300 hover:bg-card/80"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{stat.label}</p>
                   <IconComp className="size-4 text-primary/60" />
@@ -524,10 +701,12 @@ export default function MatchDetailPage() {
                   <Film className="size-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-wide">Highlight Reel Ready</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-wide">
+                    Highlight Reel Ready
+                  </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {match.highlights.length} best moments • AI commentary • Professional editing
-                    {(match as any).highlightReelPortraitUrl && ' • Portrait & Landscape'}
+                    {(match as any).highlightReelPortraitUrl && " • Portrait & Landscape"}
                   </p>
                 </div>
               </div>
@@ -536,7 +715,7 @@ export default function MatchDetailPage() {
                   href={getAssetUrl(
                     isPortrait && (match as any).highlightReelPortraitUrl
                       ? (match as any).highlightReelPortraitUrl
-                      : match.highlightReelUrl
+                      : match.highlightReelUrl,
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -551,32 +730,41 @@ export default function MatchDetailPage() {
         )}
 
         {/* ══════ No reel yet — show generate prompt ══════ */}
-        {match.status === "COMPLETED" && !match.highlightReelUrl && !(match as any).highlightReelPortraitUrl && match.highlights.length > 0 && (
-          <div className="bg-card border border-dashed border-primary/20 p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex items-center gap-3 flex-1">
-              <Film className="size-5 text-muted-foreground/50" />
-              <div>
-                <p className="text-sm text-muted-foreground">Highlight reel not generated yet</p>
-                <p className="text-xs text-muted-foreground/60">Re-analyze to auto-generate a professional highlight reel</p>
+        {match.status === "COMPLETED" &&
+          !match.highlightReelUrl &&
+          !(match as any).highlightReelPortraitUrl &&
+          match.highlights.length > 0 && (
+            <div className="bg-card border border-dashed border-primary/20 p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                <Film className="size-5 text-muted-foreground/50" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Highlight reel not generated yet</p>
+                  <p className="text-xs text-muted-foreground/60">
+                    Re-analyze to auto-generate a professional highlight reel
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={handleReanalyze}
+                disabled={reanalyzing}
+                className="inline-flex items-center gap-2 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 px-3 py-2 rounded-lg transition-all uppercase tracking-wide disabled:opacity-50 cursor-pointer"
+              >
+                {reanalyzing ? <Loader2 className="size-3 animate-spin" /> : <Cpu className="size-3" />}
+                Generate Reel
+              </button>
             </div>
-            <button
-              onClick={handleReanalyze}
-              disabled={reanalyzing}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 px-3 py-2 rounded-lg transition-all uppercase tracking-wide disabled:opacity-50 cursor-pointer"
-            >
-              {reanalyzing ? <Loader2 className="size-3 animate-spin" /> : <Cpu className="size-3" />}
-              Generate Reel
-            </button>
-          </div>
-        )}
+          )}
 
         {match.summary && (
           <div className="bg-card border border-border p-5">
             <div className="flex items-center gap-2 mb-3">
               <Cpu className="size-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">Tactical Intelligence Summary</span>
-              <span className="ml-auto text-[10px] text-muted-foreground border border-border-2 px-2 py-0.5 uppercase tracking-wider">AI Engine: Gemini 2.0 Flash</span>
+              <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">
+                Tactical Intelligence Summary
+              </span>
+              <span className="ml-auto text-[10px] text-muted-foreground border border-border-2 px-2 py-0.5 uppercase tracking-wider">
+                AI Engine: Gemini 2.0 Flash
+              </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{match.summary}</p>
           </div>
@@ -586,8 +774,12 @@ export default function MatchDetailPage() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="size-4 sm:size-5 text-amber-400" />
-              <span className="text-sm sm:text-base font-semibold text-foreground font-heading uppercase tracking-widest">High-Impact Sequential Analysis</span>
-              <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto hidden sm:inline-block">Select event for immediate tactical review</span>
+              <span className="text-sm sm:text-base font-semibold text-foreground font-heading uppercase tracking-widest">
+                High-Impact Sequential Analysis
+              </span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto hidden sm:inline-block">
+                Select event for immediate tactical review
+              </span>
             </div>
 
             {/* Scrollable Row (Desktop) / Vertical Stack (Mobile) */}
@@ -601,17 +793,29 @@ export default function MatchDetailPage() {
                 const isSilver = rank === 2;
                 const isBronze = rank === 3;
 
-                const rankBorder = isGold ? "border-amber-400/50 hover:border-amber-400"
-                  : isSilver ? "border-zinc-300/40 hover:border-zinc-300"
-                    : isBronze ? "border-amber-700/50 hover:border-amber-600"
+                const rankBorder = isGold
+                  ? "border-amber-400/50 hover:border-amber-400"
+                  : isSilver
+                    ? "border-zinc-300/40 hover:border-zinc-300"
+                    : isBronze
+                      ? "border-amber-700/50 hover:border-amber-600"
                       : "border-border hover:border-border-2";
 
-                const rankBg = isGold ? "bg-amber-400/5 hover:bg-amber-400/10"
-                  : isSilver ? "bg-zinc-300/5 hover:bg-zinc-300/10"
-                    : isBronze ? "bg-amber-700/5 hover:bg-amber-700/10"
+                const rankBg = isGold
+                  ? "bg-amber-400/5 hover:bg-amber-400/10"
+                  : isSilver
+                    ? "bg-zinc-300/5 hover:bg-zinc-300/10"
+                    : isBronze
+                      ? "bg-amber-700/5 hover:bg-amber-700/10"
                       : "bg-card hover:bg-muted/50";
 
-                const rankTextColor = isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : isBronze ? "text-amber-600" : "text-muted-foreground/50";
+                const rankTextColor = isGold
+                  ? "text-amber-400"
+                  : isSilver
+                    ? "text-zinc-300"
+                    : isBronze
+                      ? "text-amber-600"
+                      : "text-muted-foreground/50";
 
                 return (
                   <button
@@ -621,10 +825,14 @@ export default function MatchDetailPage() {
                   >
                     {/* Rank Badge Header */}
                     <div className="flex items-start justify-between w-full mb-3">
-                      <div className={`flex items-center justify-center size-6 sm:size-7 rounded-sm bg-background border ${rankBorder} ${rankTextColor} font-black text-xs sm:text-sm`}>
+                      <div
+                        className={`flex items-center justify-center size-6 sm:size-7 rounded-sm bg-background border ${rankBorder} ${rankTextColor} font-black text-xs sm:text-sm`}
+                      >
                         {rank}
                       </div>
-                      <span className={`inline-flex items-center gap-1.5 text-[10px] sm:text-xs px-2 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[10px] sm:text-xs px-2 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}
+                      >
                         {cfg.icon} {cfg.label}
                       </span>
                     </div>
@@ -641,7 +849,7 @@ export default function MatchDetailPage() {
                       </div>
                       <div className="h-1 flex-1 bg-background/50 overflow-hidden border border-border/50">
                         <div
-                          className={`h-full transition-all duration-700 ease-out ${isGold ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'bg-emerald-500'}`}
+                          className={`h-full transition-all duration-700 ease-out ${isGold ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" : "bg-emerald-500"}`}
                           style={{ width: `${(ev.finalScore / 10) * 100}%` }}
                         />
                       </div>
@@ -649,9 +857,7 @@ export default function MatchDetailPage() {
 
                     {/* Commentary snippet */}
                     {ev.commentary ? (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-auto">
-                        {ev.commentary}
-                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-auto">{ev.commentary}</p>
                     ) : (
                       <p className="text-xs text-muted-foreground/40 italic mt-auto">
                         No telemetry text recorded for this event
@@ -669,7 +875,10 @@ export default function MatchDetailPage() {
             {Object.entries(byType).map(([type, count]) => {
               const cfg = EVENT_CONFIG[type] ?? DEFAULT_EVT;
               return (
-                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 border text-sm ${cfg.bg} ${cfg.border}`}>
+                <div
+                  key={type}
+                  className={`flex items-center gap-2 px-3 py-1.5 border text-sm ${cfg.bg} ${cfg.border}`}
+                >
                   <span className={cfg.color}>{cfg.icon}</span>
                   <span className={`font-medium ${cfg.color} uppercase tracking-wide text-xs`}>{cfg.label}</span>
                   <span className="text-muted-foreground text-xs font-mono">{count}</span>
@@ -698,9 +907,15 @@ export default function MatchDetailPage() {
                 <div className="bg-muted/30 border border-border px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
                     <div className="flex items-center gap-1.5">
-                      <div className={`size-2 ${match.status === "COMPLETED" ? "bg-emerald-400" :
-                        match.status === "PROCESSING" ? "bg-blue-400 animate-pulse" : "bg-muted-foreground"
-                        }`} />
+                      <div
+                        className={`size-2 ${
+                          match.status === "COMPLETED"
+                            ? "bg-emerald-400"
+                            : match.status === "PROCESSING"
+                              ? "bg-blue-400 animate-pulse"
+                              : "bg-muted-foreground"
+                        }`}
+                      />
                       <span className="text-[10px] sm:text-xs font-bold tracking-widest text-muted-foreground uppercase">
                         {match.status === "PROCESSING" ? "Live" : "Full Time"}
                       </span>
@@ -720,7 +935,9 @@ export default function MatchDetailPage() {
                     <div className="flex-1 space-y-1 ml-4">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[9px] text-muted-foreground uppercase tracking-wide">Intensity</span>
-                        <span className="text-[9px] font-mono text-emerald-400">{(liveIntensity * 100).toFixed(0)}%</span>
+                        <span className="text-[9px] font-mono text-emerald-400">
+                          {(liveIntensity * 100).toFixed(0)}%
+                        </span>
                       </div>
                       <div className="h-1.5 bg-border overflow-hidden">
                         <div
@@ -730,13 +947,19 @@ export default function MatchDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <span className="font-mono text-xs text-muted-foreground hidden sm:block">{formatTime(currentTime)}</span>
+                  <span className="font-mono text-xs text-muted-foreground hidden sm:block">
+                    {formatTime(currentTime)}
+                  </span>
                 </div>
                 {(match.status === "PROCESSING" || match.status === "UPLOADED") && (
                   <div className="bg-blue-500/5 border border-blue-500/25 px-3 sm:px-4 py-3">
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <span className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-blue-300">
-                        {liveStage ? (PIPELINE_STAGES[liveStage] ?? liveStage) : (match.status === "UPLOADED" && processingProgress === 0 ? "Queued for analysis" : "Analysis progress")}
+                        {liveStage
+                          ? (PIPELINE_STAGES[liveStage] ?? liveStage)
+                          : match.status === "UPLOADED" && processingProgress === 0
+                            ? "Queued for analysis"
+                            : "Analysis progress"}
                       </span>
                       <span className="font-mono text-xs text-blue-200 tabular-nums">{processingProgress}%</span>
                     </div>
@@ -755,18 +978,14 @@ export default function MatchDetailPage() {
                 )}
               </div>
             )}
-            {match.emotionScores.length > 0 && (
-              <IntensityChart scores={match.emotionScores} duration={duration} />
-            )}
-            {match.events.length > 0 && (
-              <EventsTimeline events={match.events} duration={duration} onSeek={seekTo} />
-            )}
+            {match.emotionScores.length > 0 && <IntensityChart scores={match.emotionScores} duration={duration} />}
+            {match.events.length > 0 && <EventsTimeline events={match.events} duration={duration} onSeek={seekTo} />}
           </div>
 
           {/* â”€â”€ Right: Highlights + Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div className="lg:col-span-2 space-y-4">
             {/* ── Live Detection Feed ─────────────────────────────────────
-                 Shown during processing. Events appear in real-time via WS.    */}
+ Shown during processing. Events appear in real-time via WS. */}
             {(match.status === "PROCESSING" || (match.status === "UPLOADED" && liveEvents.length > 0)) && (
               <div className="bg-card border border-blue-500/30 overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-blue-500/5">
@@ -777,7 +996,8 @@ export default function MatchDetailPage() {
                 <div className="max-h-52 overflow-y-auto space-y-px">
                   {liveEvents.length === 0 && (
                     <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground/80">
-                      <Loader2 className="size-3.5 animate-spin" /> {liveStage ? (PIPELINE_STAGES[liveStage] ?? liveStage) : "Scanning frames…"}
+                      <Loader2 className="size-3.5 animate-spin" />{" "}
+                      {liveStage ? (PIPELINE_STAGES[liveStage] ?? liveStage) : "Scanning frames…"}
                     </div>
                   )}
                   {sortedLive.map((ev, i) => {
@@ -788,15 +1008,31 @@ export default function MatchDetailPage() {
                         role="button"
                         tabIndex={0}
                         onClick={() => seekTo(ev.timestamp)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); seekTo(ev.timestamp); } }}
-                        className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors cursor-pointer focus:outline-none focus:bg-muted ${i === 0 ? 'animate-pulse' : ''}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            seekTo(ev.timestamp);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors cursor-pointer focus:outline-none focus:bg-muted ${i === 0 ? "animate-pulse" : ""}`}
                       >
-                        <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 border shrink-0 ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 border shrink-0 ${cfg.bg} ${cfg.border} ${cfg.color}`}
+                        >
                           {cfg.icon} {cfg.label}
                         </span>
                         <span className="font-mono text-[10px] text-muted-foreground">{formatTime(ev.timestamp)}</span>
-                        <span className={`ml-auto font-bold text-[10px] font-mono ${ev.finalScore >= 7.5 ? 'text-emerald-400' : ev.finalScore >= 5 ? 'text-amber-400' : 'text-muted-foreground'
-                          }`}>{ev.finalScore?.toFixed(1)}</span>
+                        <span
+                          className={`ml-auto font-bold text-[10px] font-mono ${
+                            ev.finalScore >= 7.5
+                              ? "text-emerald-400"
+                              : ev.finalScore >= 5
+                                ? "text-amber-400"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {ev.finalScore?.toFixed(1)}
+                        </span>
                       </div>
                     );
                   })}
@@ -810,12 +1046,14 @@ export default function MatchDetailPage() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`flex-1 text-[10px] sm:text-sm py-2 font-medium transition-all uppercase tracking-wide cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset
-                    ${activeTab === tab
-                      ? "bg-primary text-[#07080F]"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+ ${activeTab === tab ? "bg-primary text-[#07080F]" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
                 >
-                  {tab === "highlights" ? `Highlights (${match.highlights.length})`
-                    : tab === "events" ? (match.status === "PROCESSING" ? `Events (${liveEvents.length} live)` : `Events (${match.events.length})`)
+                  {tab === "highlights"
+                    ? `Highlights (${match.highlights.length})`
+                    : tab === "events"
+                      ? match.status === "PROCESSING"
+                        ? `Events (${liveEvents.length} live)`
+                        : `Events (${match.events.length})`
                       : "Analytics"}
                 </button>
               ))}
@@ -831,7 +1069,7 @@ export default function MatchDetailPage() {
                       href={getAssetUrl(
                         isPortrait && (match as any).highlightReelPortraitUrl
                           ? (match as any).highlightReelPortraitUrl
-                          : match.highlightReelUrl
+                          : match.highlightReelUrl,
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -853,16 +1091,26 @@ export default function MatchDetailPage() {
                   const isAccepted = acceptedHighlights.has(h.id);
                   const isEditing = editingHighlight === h.id;
                   return (
-                    <div key={h.id} className={`border p-4 transition-all ${
-                      isAccepted ? "border-emerald-400/50 bg-emerald-400/5" :
-                      isActive ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border-2"
-                    }`}>
+                    <div
+                      key={h.id}
+                      className={`border p-4 transition-all ${
+                        isAccepted
+                          ? "border-emerald-400/50 bg-emerald-400/5"
+                          : isActive
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border bg-card hover:border-border-2"
+                      }`}
+                    >
                       {/* Header row: number + event badge + accept/reject + score */}
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="size-6 bg-muted flex items-center justify-center text-xs text-muted-foreground font-bold shrink-0">{i + 1}</span>
+                          <span className="size-6 bg-muted flex items-center justify-center text-xs text-muted-foreground font-bold shrink-0">
+                            {i + 1}
+                          </span>
                           {h.eventType && (
-                            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}
+                            >
                               {cfg.icon} {cfg.label}
                             </span>
                           )}
@@ -893,7 +1141,7 @@ export default function MatchDetailPage() {
                               </button>
                               {/* Edit */}
                               <button
-                                onClick={() => isEditing ? cancelEditHighlight() : startEditHighlight(h)}
+                                onClick={() => (isEditing ? cancelEditHighlight() : startEditHighlight(h))}
                                 title="Edit timestamps & event type"
                                 className={`p-1 rounded transition-all cursor-pointer focus:outline-none ${
                                   isEditing
@@ -925,14 +1173,21 @@ export default function MatchDetailPage() {
                       {/* Editable timestamp / event type form — admin only */}
                       {isAdmin && isEditing ? (
                         <div className="space-y-2 mb-3 p-3 bg-muted/50 border border-border rounded">
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Edit Timestamps & Type</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                            Edit Timestamps & Type
+                          </p>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <label className="text-[10px] text-muted-foreground block mb-0.5">Start (m:ss)</label>
                               <input
                                 type="text"
                                 value={editForm.startTime}
-                                onChange={(e) => setEditForm(f => ({ ...f, startTime: e.target.value }))}
+                                onChange={(e) =>
+                                  setEditForm((f) => ({
+                                    ...f,
+                                    startTime: e.target.value,
+                                  }))
+                                }
                                 placeholder="0:00"
                                 className="w-full text-xs font-mono bg-background border border-border px-2 py-1.5 text-foreground rounded focus:outline-none focus:border-primary"
                               />
@@ -942,7 +1197,12 @@ export default function MatchDetailPage() {
                               <input
                                 type="text"
                                 value={editForm.endTime}
-                                onChange={(e) => setEditForm(f => ({ ...f, endTime: e.target.value }))}
+                                onChange={(e) =>
+                                  setEditForm((f) => ({
+                                    ...f,
+                                    endTime: e.target.value,
+                                  }))
+                                }
                                 placeholder="0:30"
                                 className="w-full text-xs font-mono bg-background border border-border px-2 py-1.5 text-foreground rounded focus:outline-none focus:border-primary"
                               />
@@ -952,7 +1212,12 @@ export default function MatchDetailPage() {
                             <label className="text-[10px] text-muted-foreground block mb-0.5">Event Type</label>
                             <select
                               value={editForm.eventType}
-                              onChange={(e) => setEditForm(f => ({ ...f, eventType: e.target.value }))}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  eventType: e.target.value,
+                                }))
+                              }
                               className="w-full text-xs bg-background border border-border px-2 py-1.5 text-foreground rounded focus:outline-none focus:border-primary cursor-pointer"
                             >
                               <option value="">— select —</option>
@@ -973,7 +1238,9 @@ export default function MatchDetailPage() {
                       ) : (
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
                           <Clock className="size-3" />
-                          <span className="font-mono">{formatTime(h.startTime)} → {formatTime(h.endTime)}</span>
+                          <span className="font-mono">
+                            {formatTime(h.startTime)} → {formatTime(h.endTime)}
+                          </span>
                           <span className="text-muted-foreground/50">·</span>
                           <span>{Math.round(h.endTime - h.startTime)}s</span>
                         </div>
@@ -1017,10 +1284,11 @@ export default function MatchDetailPage() {
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       onClick={() => setEventTypeFilter("ALL")}
-                      className={`text-xs px-3 py-1.5 border transition-all uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${eventTypeFilter === "ALL"
-                        ? "bg-muted-foreground/20 border-border-2 text-foreground"
-                        : "bg-transparent border-border text-muted-foreground hover:border-border-2 hover:text-foreground"
-                        }`}
+                      className={`text-xs px-3 py-1.5 border transition-all uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
+                        eventTypeFilter === "ALL"
+                          ? "bg-muted-foreground/20 border-border-2 text-foreground"
+                          : "bg-transparent border-border text-muted-foreground hover:border-border-2 hover:text-foreground"
+                      }`}
                     >
                       All ({match.events.length})
                     </button>
@@ -1030,10 +1298,11 @@ export default function MatchDetailPage() {
                         <button
                           key={type}
                           onClick={() => setEventTypeFilter(type)}
-                          className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 border transition-all uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${eventTypeFilter === type
-                            ? `${cfg.bg} ${cfg.border} ${cfg.color}`
-                            : "bg-transparent border-border text-muted-foreground hover:border-border-2 hover:text-foreground"
-                            }`}
+                          className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 border transition-all uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
+                            eventTypeFilter === type
+                              ? `${cfg.bg} ${cfg.border} ${cfg.color}`
+                              : "bg-transparent border-border text-muted-foreground hover:border-border-2 hover:text-foreground"
+                          }`}
                         >
                           {cfg.icon} {cfg.label} ({byType[type] ?? 0})
                         </button>
@@ -1063,8 +1332,12 @@ export default function MatchDetailPage() {
                           <div className="absolute -left-5 top-1.5 size-3 bg-zinc-900 border border-zinc-700 rounded-full group-hover:border-primary transition-colors" />
 
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-mono text-primary font-bold">{formatTime(ev.timestamp)}</span>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                            <span className="text-[10px] font-mono text-primary font-bold">
+                              {formatTime(ev.timestamp)}
+                            </span>
+                            <span
+                              className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 border ${cfg.bg} ${cfg.border} ${cfg.color}`}
+                            >
                               {cfg.label}
                             </span>
                             <ScoreBadge score={ev.finalScore} />
@@ -1077,7 +1350,9 @@ export default function MatchDetailPage() {
                               </p>
                             </div>
                           )}
-                          {!isLast && <div className="h-px w-full bg-linear-to-r from-zinc-800/50 to-transparent mt-2" />}
+                          {!isLast && (
+                            <div className="h-px w-full bg-linear-to-r from-zinc-800/50 to-transparent mt-2" />
+                          )}
                         </div>
                       );
                     })}
@@ -1092,58 +1367,82 @@ export default function MatchDetailPage() {
                   <div className="bg-card border border-border p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <Zap className="size-4 text-amber-400" />
-                      <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">Ball Speed</span>
-                      <span className="ml-auto text-[10px] text-muted-foreground border border-border px-2 py-0.5 uppercase tracking-wider">Est. via YOLO Tracking</span>
+                      <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">
+                        Ball Speed
+                      </span>
+                      <span className="ml-auto text-[10px] text-muted-foreground border border-border px-2 py-0.5 uppercase tracking-wider">
+                        Est. via YOLO Tracking
+                      </span>
                     </div>
                     <div className="flex items-end gap-3">
-                      <span className="font-display text-5xl text-amber-400" style={{ textShadow: '0 0 20px rgba(251,191,36,0.4)' }}>
+                      <span
+                        className="font-display text-5xl text-amber-400"
+                        style={{ textShadow: "0 0 20px rgba(251,191,36,0.4)" }}
+                      >
                         {(match as any).topSpeedKmh.toFixed(1)}
                       </span>
-                      <span className="font-mono text-sm text-muted-foreground mb-1 uppercase tracking-widest">KM / H</span>
+                      <span className="font-mono text-sm text-muted-foreground mb-1 uppercase tracking-widest">
+                        KM / H
+                      </span>
                     </div>
-                    <p className="text-xs text-muted-foreground/60 mt-2">Top ball speed estimated from consecutive YOLO detections across the match footage</p>
+                    <p className="text-xs text-muted-foreground/60 mt-2">
+                      Top ball speed estimated from consecutive YOLO detections across the match footage
+                    </p>
                   </div>
                 ) : (
                   <div className="bg-card border border-dashed border-border/60 p-5 text-center">
                     <Zap className="size-6 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">Ball speed data unavailable — re-analyze to generate</p>
+                    <p className="text-xs text-muted-foreground">
+                      Ball speed data unavailable — re-analyze to generate
+                    </p>
                   </div>
                 )}
 
                 {/* Team Colors */}
-                {match.teamColors && Array.isArray(match.teamColors) && (match.teamColors as number[][]).length >= 2 && (
-                  <div className="bg-card border border-border p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <BarChart3 className="size-4 text-primary" />
-                      <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">Detected Team Colors</span>
-                    </div>
-                    <div className="flex gap-4">
-                      {(match.teamColors as number[][]).slice(0, 2).map((color, idx) => {
-                        const [r, g, b] = color;
-                        const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-                        return (
-                          <div key={idx} className="flex items-center gap-3">
-                            <div
-                              className="size-10 border border-border/60 shadow-lg"
-                              style={{ backgroundColor: hex, boxShadow: `0 0 12px ${hex}60` }}
-                            />
-                            <div>
-                              <p className="font-mono text-xs text-foreground uppercase tracking-widest">Team {String.fromCharCode(65 + idx)}</p>
-                              <p className="font-mono text-[10px] text-muted-foreground">{hex.toUpperCase()}</p>
+                {match.teamColors &&
+                  Array.isArray(match.teamColors) &&
+                  (match.teamColors as number[][]).length >= 2 && (
+                    <div className="bg-card border border-border p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <BarChart3 className="size-4 text-primary" />
+                        <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">
+                          Detected Team Colors
+                        </span>
+                      </div>
+                      <div className="flex gap-4">
+                        {(match.teamColors as number[][]).slice(0, 2).map((color, idx) => {
+                          const [r, g, b] = color;
+                          const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+                          return (
+                            <div key={idx} className="flex items-center gap-3">
+                              <div
+                                className="size-10 border border-border/60 shadow-lg"
+                                style={{
+                                  backgroundColor: hex,
+                                  boxShadow: `0 0 12px ${hex}60`,
+                                }}
+                              />
+                              <div>
+                                <p className="font-mono text-xs text-foreground uppercase tracking-widest">
+                                  Team {String.fromCharCode(65 + idx)}
+                                </p>
+                                <p className="font-mono text-[10px] text-muted-foreground">{hex.toUpperCase()}</p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Player Heatmap */}
                 {(match as any).heatmapUrl ? (
                   <div className="bg-card border border-border p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <TrendingUp className="size-4 text-primary" />
-                      <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">Player Density Heatmap</span>
+                      <span className="text-sm font-semibold text-foreground font-heading uppercase tracking-wide">
+                        Player Density Heatmap
+                      </span>
                       <span className="ml-auto text-[10px] text-muted-foreground">Full match coverage</span>
                     </div>
                     <div className="relative w-full overflow-hidden border border-border/50">
@@ -1154,13 +1453,18 @@ export default function MatchDetailPage() {
                         loading="lazy"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground/60 mt-2">Highlights where each team concentrated their play. Green = Team A, Red = Team B, Yellow = ball trail.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-2">
+                      Highlights where each team concentrated their play. Green = Team A, Red = Team B, Yellow = ball
+                      trail.
+                    </p>
                   </div>
                 ) : (
                   <div className="bg-card border border-dashed border-border/60 p-8 text-center">
                     <TrendingUp className="size-8 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">Heatmap not generated yet</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">Re-analyze the match to generate a player density heatmap</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1">
+                      Re-analyze the match to generate a player density heatmap
+                    </p>
                   </div>
                 )}
               </div>
@@ -1171,4 +1475,3 @@ export default function MatchDetailPage() {
     </div>
   );
 }
-

@@ -1,22 +1,22 @@
 {
-  "extends": "../../packages/typescript-config/nextjs.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+ "extends": "../../packages/typescript-config/nextjs.json",
+ "compilerOptions": {
+ "baseUrl": ".",
+ "paths": {
+ "@/*": [
+ "./*"
+ ]
+ }
+ },
+ "include": [
+ "next-env.d.ts",
+ "**/*.ts",
+ "**/*.tsx",
+ ".next/types/**/*.ts",
+ ".next/dev/types/**/*.ts",
+ "**/*.mts"
+ ],
+ "exclude": [
+ "node_modules"
+ ]
 }

@@ -14,28 +14,34 @@ export function Navbar() {
     <nav className="w-full border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50 shadow-2xl">
       {/* Content Layer */}
       <div className="relative z-10 flex items-center justify-between py-3 md:py-4 px-4 sm:px-6 md:px-8 max-w-360 mx-auto">
-        <Link 
-          href="/" 
-          className="flex items-center gap-2 sm:gap-3 transition-opacity duration-200 hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm group" 
+        <Link
+          href="/"
+          className="flex items-center gap-2 sm:gap-3 transition-opacity duration-200 hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm group"
           aria-label="Go to homepage"
         >
           {/* Custom Logo Image */}
           <div className="relative size-7 sm:size-8 shrink-0 overflow-hidden transform group-hover:scale-105 transition-transform duration-300">
-            <Image 
-              src="/favicons/logo.png" 
-              alt="Matcha AI Logo" 
+            <Image
+              src="/favicons/logo.png"
+              alt="Matcha AI Logo"
               fill
               className="object-contain drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]"
               sizes="(max-width: 640px) 28px, 32px"
             />
           </div>
-          
+
           <div className="flex items-baseline gap-1">
-            <span className="font-display tracking-[0.12em] text-[16px] sm:text-[18px] md:text-[20px] text-foreground drop-shadow-md">MATCHA</span>
-            <span className="font-display tracking-[0.12em] ml-0.5 text-[16px] sm:text-[18px] md:text-[20px] text-primary drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]">AI</span>
+            <span className="font-display tracking-[0.12em] text-[16px] sm:text-[18px] md:text-[20px] text-foreground drop-shadow-md">
+              MATCHA
+            </span>
+            <span className="font-display tracking-[0.12em] ml-0.5 text-[16px] sm:text-[18px] md:text-[20px] text-primary drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]">
+              AI
+            </span>
           </div>
           <div className="hidden lg:block w-px h-4 mx-2 bg-border shrink-0" />
-          <span className="hidden lg:inline-block font-mono text-[9px] text-muted-foreground uppercase tracking-[0.14em]">DTU EDITION</span>
+          <span className="hidden lg:inline-block font-mono text-[9px] text-muted-foreground uppercase tracking-[0.14em]">
+            DTU EDITION
+          </span>
         </Link>
 
         {/* Centre nav links */}
@@ -70,7 +76,9 @@ export function Navbar() {
 
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-destructive/20 border border-destructive/30 rounded-sm backdrop-blur-sm">
             <span className="size-1.5 rounded-full animate-blink bg-destructive shadow-[0_0_8px_rgba(var(--color-destructive),0.8)]" />
-            <span className="font-mono text-[9px] text-destructive uppercase tracking-[0.14em] font-bold mt-px drop-shadow-sm">LIVE</span>
+            <span className="font-mono text-[9px] text-destructive uppercase tracking-[0.14em] font-bold mt-px drop-shadow-sm">
+              LIVE
+            </span>
           </div>
 
           {user ? (
@@ -87,7 +95,9 @@ export function Navbar() {
                 title="Sign Out"
               >
                 <LogOut className="size-3" />
-                <span className="hidden sm:inline-block font-mono text-[10px] uppercase tracking-widest mt-px">Logout</span>
+                <span className="hidden sm:inline-block font-mono text-[10px] uppercase tracking-widest mt-px">
+                  Logout
+                </span>
               </button>
             </div>
           ) : (

@@ -74,7 +74,10 @@ export class MatchesController {
     if (!url) throw new BadRequestException('url query param required');
     try {
       const parsed = new URL(url);
-      if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
+      if (
+        !parsed.hostname.includes('youtube.com') &&
+        !parsed.hostname.includes('youtu.be')
+      ) {
         throw new BadRequestException('Must be a YouTube URL');
       }
     } catch (e) {
@@ -84,7 +87,9 @@ export class MatchesController {
     // Proxy to inference service
     const inferenceUrl = process.env.INFERENCE_URL || 'http://localhost:8000';
     try {
-      const resp = await fetch(`${inferenceUrl}/api/v1/yt-info?url=${encodeURIComponent(url)}`);
+      const resp = await fetch(
+        `${inferenceUrl}/api/v1/yt-info?url=${encodeURIComponent(url)}`,
+      );
       if (!resp.ok) throw new Error(await resp.text());
       return resp.json();
     } catch (e: any) {
@@ -178,7 +183,10 @@ export class MatchesController {
   }
 
   @Post(':id/tracking-update')
-  async trackingUpdate(@Param('id') id: string, @Body() body: { frames: object[] }) {
+  async trackingUpdate(
+    @Param('id') id: string,
+    @Body() body: { frames: object[] },
+  ) {
     return this.matchesService.pushTrackingUpdate(id, body?.frames ?? []);
   }
 

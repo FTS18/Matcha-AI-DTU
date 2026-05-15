@@ -3,5 +3,9 @@
 import { View, Text } from "react-native";
 
 export function MatchCard() {
-  return <View><Text>MatchCard</Text></View>;
+  return (
+    <View>
+      <Text>MatchCard</Text>
+    </View>
+  );
 }

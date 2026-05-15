@@ -1,6 +1,6 @@
 # Matcha AI — Complete Setup Guide (Beginner Friendly)
 
-> This guide walks you through **every single step** needed to get the **entire Matcha AI stack running** on your local machine — from scratch. It is written for someone who knows basic terminal usage but may not be familiar with monorepos, Docker, Python virtual environments, or Node.js workspaces. Every command is explained so you understand *why* you are running it, not just *what* to type.
+> This guide walks you through **every single step** needed to get the **entire Matcha AI stack running** on your local machine — from scratch. It is written for someone who knows basic terminal usage but may not be familiar with monorepos, Docker, Python virtual environments, or Node.js workspaces. Every command is explained so you understand _why_ you are running it, not just _what_ to type.
 
 ---
 
@@ -23,13 +23,13 @@
 
 Matcha AI is a **monorepo** — a single Git repository that contains multiple services that work together:
 
-| Service | Technology | What it does |
-| :--- | :--- | :--- |
-| **Web Frontend** | Next.js (React) | The UI that users interact with in their browser. |
-| **Orchestrator** | NestJS (Node.js) | The backend API server — handles auth, matches, uploads. |
-| **Inference Engine** | FastAPI (Python) | The AI brain — runs YOLO, Gemini, and generates highlights. |
-| **Database** | PostgreSQL (Docker) | Stores users, matches, and events persistently. |
-| **Cache** | Redis (Docker) | Fast in-memory store for tracking active analysis jobs. |
+| Service              | Technology          | What it does                                                |
+| :------------------- | :------------------ | :---------------------------------------------------------- |
+| **Web Frontend**     | Next.js (React)     | The UI that users interact with in their browser.           |
+| **Orchestrator**     | NestJS (Node.js)    | The backend API server — handles auth, matches, uploads.    |
+| **Inference Engine** | FastAPI (Python)    | The AI brain — runs YOLO, Gemini, and generates highlights. |
+| **Database**         | PostgreSQL (Docker) | Stores users, matches, and events persistently.             |
+| **Cache**            | Redis (Docker)      | Fast in-memory store for tracking active analysis jobs.     |
 
 All of them need to be running simultaneously for the app to work correctly.
 
@@ -99,6 +99,7 @@ ffmpeg -version
 ```
 
 If not installed:
+
 - **macOS**: `brew install ffmpeg`
 - **Ubuntu/Linux**: `sudo apt install ffmpeg`
 - **Windows**: Download from https://ffmpeg.org/download.html and add to PATH.
@@ -143,6 +144,7 @@ docker-compose up -d --build
 ```
 
 **What this does:**
+
 - Downloads the official `postgres:16-alpine` and `redis:7-alpine` Docker images (only on first run, takes a minute).
 - Starts a PostgreSQL server accessible at `localhost:5433`.
 - Starts a Redis server accessible at `localhost:6380`.
@@ -181,6 +183,7 @@ npm install
 ```
 
 **What this does:**
+
 - Reads `package.json` in the root and in every `apps/*`, `packages/*`, and `services/*` folder.
 - Downloads and installs all required Node.js packages into `node_modules`.
 - **Links monorepo packages** — so `@matcha/ui`, `@matcha/env`, `@matcha/shared`, etc., are all available to each service without publishing to npm.
@@ -196,6 +199,7 @@ npx turbo run build
 ```
 
 **What this does:**
+
 - Turborepo figures out which packages depend on which (e.g., `web` depends on `@matcha/env`, so `@matcha/env` must be built first).
 - Compiles TypeScript source files (`src/*.ts`) into JavaScript (`dist/*.js`) for every shared package.
 - Results are cached — if nothing changed, subsequent builds are instant.
@@ -249,11 +253,13 @@ This creates a folder called `venv/` inside `services/inference/`. You'll only n
 Every time you open a new terminal and want to work with the Inference service, you must activate the venv:
 
 **macOS / Linux:**
+
 ```bash
 source venv/bin/activate
 ```
 
 **Windows:**
+
 ```bash
 .\venv\Scripts\activate
 ```
@@ -277,6 +283,7 @@ pip install -r requirements.txt
 This reads `requirements.txt` and installs everything: FastAPI, Uvicorn (the HTTP server), OpenCV, NumPy, PyTorch, Ultralytics YOLO, edge-tts, and more. This can take **5-10 minutes** on the first run as it downloads large packages like PyTorch.
 
 > **GPU Support (Optional)**: If you have an NVIDIA GPU with CUDA 12.4, you'll get much faster video analysis. In that case, instead of the above, install PyTorch with CUDA support first:
+>
 > ```bash
 > pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 > pip install -r requirements.txt
@@ -360,7 +367,7 @@ HF_TOKEN="hf_your_huggingface_token_here"
 
 ---
 
-## 🚀 Step 6: Run the Full Stack
+## Step 6: Run the Full Stack
 
 Now that all dependencies and environment variables are set up, you can launch everything.
 
@@ -369,12 +376,14 @@ Now that all dependencies and environment variables are set up, you can launch e
 The frontend and orchestrator can be started together with Turborepo:
 
 **One command — starts Frontend, Orchestrator AND the Inference Engine simultaneously:**
+
 ```bash
 # From the project root (Matcha-AI-DTU/)
 npx turbo run dev
 ```
 
 This starts all three services at once:
+
 - **Web Frontend** at `http://localhost:3000` (or `3001` if 3000 is busy)
 - **Orchestrator API** at `http://localhost:4000/api/v1`
 - **Python Inference Engine** at `http://localhost:8000`
@@ -390,24 +399,28 @@ You'll see the Inference engine download YOLO model weights on the first run (~2
 If you need to debug a specific service, open 3 separate terminals:
 
 **Terminal 1 — Frontend only:**
+
 ```bash
 cd apps/web
 npm run dev
 ```
 
 **Terminal 2 — Orchestrator only:**
+
 ```bash
 cd services/orchestrator
 npm run dev
 ```
 
 **Terminal 3 — Inference Engine (macOS/Linux):**
+
 ```bash
 cd services/inference
 ./venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **Terminal 3 — Inference Engine (Windows):**
+
 ```powershell
 cd services/inference
 .\venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -415,7 +428,7 @@ cd services/inference
 
 ---
 
-## ✅ Step 7: Verify Everything is Working
+## Step 7: Verify Everything is Working
 
 Once all services are running, confirm they're healthy:
 
@@ -426,8 +439,14 @@ curl http://localhost:4000/api/v1/health
 ```
 
 Expected response:
+
 ```json
-{"status":"ok","service":"orchestrator","uptime":42,"timestamp":"2026-02-22T18:00:00.000Z"}
+{
+  "status": "ok",
+  "service": "orchestrator",
+  "uptime": 42,
+  "timestamp": "2026-02-22T18:00:00.000Z"
+}
 ```
 
 ### Check the Inference Engine
@@ -453,6 +472,7 @@ You should see the Matcha AI web interface. If port 3000 was already in use, che
 **What it means:** The shared packages haven't been built yet, or the build failed.
 
 **Fix:**
+
 ```bash
 # From the project root
 npm install
@@ -460,6 +480,7 @@ npx turbo run build
 ```
 
 If the build still fails, check the specific package. For example, for `@matcha/env`:
+
 ```bash
 cd packages/env
 npm install
@@ -473,6 +494,7 @@ npx tsc
 **What it means:** The `tsconfig.json` in `packages/env` is using an incompatible `moduleResolution` setting.
 
 **Fix:** Ensure `packages/env/tsconfig.json` has:
+
 ```json
 {
   "compilerOptions": {
@@ -502,6 +524,7 @@ npx tsc
 **What it means:** Docker is not running, or the PostgreSQL container hasn't started yet.
 
 **Fix:**
+
 1. Open Docker Desktop and make sure it's running.
 2. Run `docker-compose up -d` from the project root.
 3. Wait ~10 seconds, then run `docker ps` to confirm `matcha_postgres` status shows `Up`.
@@ -525,12 +548,14 @@ CORS_ORIGIN=http://localhost:3001
 **What it means:** The database migrations haven't been applied to your PostgreSQL container.
 
 **Fix:**
+
 ```bash
 cd services/orchestrator
 npx prisma migrate deploy
 ```
 
 If that doesn't work, try:
+
 ```bash
 npx prisma db push
 ```
@@ -567,16 +592,13 @@ Every time you want to run the project after a fresh terminal session:
 
 - [ ] **Docker Desktop** is open and running
 - [ ] Run `docker-compose up -d` from project root (or verify containers already running with `docker ps`)
-- [ ] Run `npx turbo run dev` from project root — **starts Frontend, Orchestrator, and Inference Engine all at once** ✅
+- [ ] Run `npx turbo run dev` from project root — **starts Frontend, Orchestrator, and Inference Engine all at once**
 - [ ] Open browser at `http://localhost:3000`
 
 ---
 
-> [!TIP]
-> **First time setup takes the longest.** Installing Python packages (especially PyTorch) and building Node.js packages can take 10-15 minutes total. Every subsequent startup is much faster — usually under 30 seconds.
+> [!TIP] **First time setup takes the longest.** Installing Python packages (especially PyTorch) and building Node.js packages can take 10-15 minutes total. Every subsequent startup is much faster — usually under 30 seconds.
 
-> [!NOTE]
-> **Gemini API Key**: Many features (AI commentary, match summaries, event detection via Vision AI) require a Gemini API key. You can get one for free at https://aistudio.google.com/app/apikey — the free tier is generous enough for development. Without it, the system falls back to a simpler motion-based highlight detection.
+> [!NOTE] **Gemini API Key**: Many features (AI commentary, match summaries, event detection via Vision AI) require a Gemini API key. You can get one for free at https://aistudio.google.com/app/apikey — the free tier is generous enough for development. Without it, the system falls back to a simpler motion-based highlight detection.
 
-> [!IMPORTANT]
-> **Windows users**: The default `npx turbo run dev` command starts the Inference engine using `./venv/bin/python` (a macOS/Linux path). On Windows, run the Inference engine separately using `cd services/inference && .\venv\Scripts\activate && python -m uvicorn main:app --port 8000 --reload`, or use `npm run dev:win` from inside `services/inference`.
+> [!IMPORTANT] **Windows users**: The default `npx turbo run dev` command starts the Inference engine using `./venv/bin/python` (a macOS/Linux path). On Windows, run the Inference engine separately using `cd services/inference && .\venv\Scripts\activate && python -m uvicorn main:app --port 8000 --reload`, or use `npm run dev:win` from inside `services/inference`.

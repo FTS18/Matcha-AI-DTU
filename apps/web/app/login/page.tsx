@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const router = useRouter();
 
@@ -29,7 +29,10 @@ export default function LoginPage() {
     } catch (err: any) {
       // The API error contains stringified JSON or plain text
       let msg = err.message;
-      try { const parsed = JSON.parse(msg); if(parsed.message) msg = parsed.message; } catch(e){}
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed.message) msg = parsed.message;
+      } catch (e) {}
       setError(msg || "Failed to log in.");
     } finally {
       setLoading(false);
@@ -43,12 +46,8 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm border border-border bg-card/80 backdrop-blur-xl p-8 card-flat">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
-            Welcome Back
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Sign in to analyze tactical match footage.
-          </p>
+          <h1 className="text-3xl font-heading font-bold text-foreground mb-2 uppercase tracking-wide">Welcome Back</h1>
+          <p className="text-sm text-muted-foreground">Sign in to analyze tactical match footage.</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">

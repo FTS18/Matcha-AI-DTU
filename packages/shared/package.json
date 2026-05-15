@@ -1,25 +1,25 @@
 {
-    "name": "@matcha/shared",
-    "version": "1.0.0",
-    "private": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "exports": {
-        ".": {
-            "require": "./dist/index.js",
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
-    },
-    "scripts": {
-        "build": "tsc",
-        "typecheck": "tsc --noEmit"
-    },
-    "dependencies": {
-        "@matcha/contracts": "*",
-        "socket.io-client": "^4.8.1"
-    },
-    "devDependencies": {
-        "typescript": "^5.3.3"
-    }
+ "name": "@matcha/shared",
+ "version": "1.0.0",
+ "private": true,
+ "main": "./dist/index.js",
+ "types": "./dist/index.d.ts",
+ "exports": {
+ ".": {
+ "require": "./dist/index.js",
+ "import": "./dist/index.js",
+ "types": "./dist/index.d.ts"
+ }
+ },
+ "scripts": {
+ "build": "tsc",
+ "typecheck": "tsc --noEmit"
+ },
+ "dependencies": {
+ "@matcha/contracts": "*",
+ "socket.io-client": "^4.8.1"
+ },
+ "devDependencies": {
+ "typescript": "^5.3.3"
+ }
 }

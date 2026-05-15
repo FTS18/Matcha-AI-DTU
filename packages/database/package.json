@@ -1,20 +1,20 @@
 {
-    "name": "@matcha/database",
-    "version": "1.0.0",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "license": "MIT",
-    "scripts": {
-        "build": "tsc",
-        "generate": "prisma generate",
-        "push": "prisma db push"
-    },
-    "dependencies": {
-        "@prisma/client": "^5.22.0"
-    },
-    "devDependencies": {
-        "@matcha/typescript-config": "*",
-        "prisma": "^5.10.2",
-        "typescript": "^5.3.3"
-    }
+ "name": "@matcha/database",
+ "version": "1.0.0",
+ "main": "dist/index.js",
+ "types": "dist/index.d.ts",
+ "license": "MIT",
+ "scripts": {
+ "build": "tsc",
+ "generate": "prisma generate",
+ "push": "prisma db push"
+ },
+ "dependencies": {
+ "@prisma/client": "^5.22.0"
+ },
+ "devDependencies": {
+ "@matcha/typescript-config": "*",
+ "prisma": "^5.10.2",
+ "typescript": "^5.3.3"
+ }
 }

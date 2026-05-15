@@ -22,7 +22,7 @@ export function filterEventsByType(events: MatchEvent[], type: string): MatchEve
 export function getLiveIntensity(scores: EmotionScore[], currentTime: number): number {
   if (!scores.length) return 0;
   const nearest = scores.reduce((prev, cur) =>
-    Math.abs(cur.timestamp - currentTime) < Math.abs(prev.timestamp - currentTime) ? cur : prev
+    Math.abs(cur.timestamp - currentTime) < Math.abs(prev.timestamp - currentTime) ? cur : prev,
   );
   return nearest.motionScore;
 }
@@ -60,7 +60,8 @@ export function timeAgo(iso: string | null): string {
 }
 
 /** Regex for all standard YouTube URL formats */
-export const YOUTUBE_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+export const YOUTUBE_REGEX =
+  /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
 /** Validate if a string is a valid YouTube URL */
 export function isYoutubeUrl(url: string): boolean {
@@ -78,7 +79,7 @@ export async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
   retries = 3,
-  backoff = 300
+  backoff = 300,
 ): Promise<Response> {
   try {
     const res = await fetch(url, options);
@@ -93,4 +94,3 @@ export async function fetchWithRetry(
     return fetchWithRetry(url, options, retries - 1, backoff * 2);
   }
 }
-

@@ -3,9 +3,23 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
-  Play, Pause, ChevronLeft, ChevronRight, Film, Zap, Shield,
-  Target, AlertTriangle, Star, Clock, ArrowLeft, Loader2,
-  Volume2, VolumeX, Maximize, Heart,
+  Play,
+  Pause,
+  ChevronLeft,
+  ChevronRight,
+  Film,
+  Zap,
+  Shield,
+  Target,
+  AlertTriangle,
+  Star,
+  Clock,
+  ArrowLeft,
+  Loader2,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createApiClient } from "@matcha/shared";
@@ -13,16 +27,63 @@ import { formatTime } from "@matcha/shared";
 import type { Highlight, MatchSummary } from "@matcha/shared";
 
 // ── Event config ──────────────────────────────────────────────────────────────
-const EV_STYLES: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
-  GOAL:      { label: "Goal",      icon: <Target className="size-3" />,       color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/30" },
-  TACKLE:    { label: "Tackle",    icon: <Zap className="size-3" />,          color: "text-amber-400",   bg: "bg-amber-400/10",   border: "border-amber-400/30" },
-  FOUL:      { label: "Foul",      icon: <AlertTriangle className="size-3" />,color: "text-red-400",     bg: "bg-red-400/10",     border: "border-red-400/30" },
-  SAVE:      { label: "Save",      icon: <Shield className="size-3" />,       color: "text-blue-400",    bg: "bg-blue-400/10",    border: "border-blue-400/30" },
-  CELEBRATION:{ label: "Celeb",   icon: <Star className="size-3" />,          color: "text-purple-400",  bg: "bg-purple-400/10",  border: "border-purple-400/30" },
-  HIGHLIGHT: { label: "Highlight", icon: <Film className="size-3" />,         color: "text-zinc-300",    bg: "bg-zinc-400/10",    border: "border-zinc-400/20" },
+const EV_STYLES: Record<
+  string,
+  {
+    label: string;
+    icon: React.ReactNode;
+    color: string;
+    bg: string;
+    border: string;
+  }
+> = {
+  GOAL: {
+    label: "Goal",
+    icon: <Target className="size-3" />,
+    color: "text-emerald-400",
+    bg: "bg-emerald-400/10",
+    border: "border-emerald-400/30",
+  },
+  TACKLE: {
+    label: "Tackle",
+    icon: <Zap className="size-3" />,
+    color: "text-amber-400",
+    bg: "bg-amber-400/10",
+    border: "border-amber-400/30",
+  },
+  FOUL: {
+    label: "Foul",
+    icon: <AlertTriangle className="size-3" />,
+    color: "text-red-400",
+    bg: "bg-red-400/10",
+    border: "border-red-400/30",
+  },
+  SAVE: {
+    label: "Save",
+    icon: <Shield className="size-3" />,
+    color: "text-blue-400",
+    bg: "bg-blue-400/10",
+    border: "border-blue-400/30",
+  },
+  CELEBRATION: {
+    label: "Celeb",
+    icon: <Star className="size-3" />,
+    color: "text-purple-400",
+    bg: "bg-purple-400/10",
+    border: "border-purple-400/30",
+  },
+  HIGHLIGHT: {
+    label: "Highlight",
+    icon: <Film className="size-3" />,
+    color: "text-zinc-300",
+    bg: "bg-zinc-400/10",
+    border: "border-zinc-400/20",
+  },
 };
 const EV_DEFAULT = EV_STYLES["HIGHLIGHT"];
-function evStyle(type: string | null) { return EV_STYLES[(type ?? "").toUpperCase()] ?? EV_DEFAULT; }
+function evStyle(type: string | null) {
+  return EV_STYLES[(type ?? "").toUpperCase()] ?? EV_DEFAULT;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface FeedItem {
@@ -34,7 +95,11 @@ interface FeedItem {
 
 // ── Mobile Shorts-style card (full-screen snap) ───────────────────────────────
 function ShortCard({
-  item, onNext, onPrev, hasNext, hasPrev,
+  item,
+  onNext,
+  onPrev,
+  hasNext,
+  hasPrev,
 }: {
   item: FeedItem;
   onNext: () => void;
@@ -55,19 +120,28 @@ function ShortCard({
     const v = vidRef.current;
     if (!v) return;
     v.currentTime = 0;
-    v.play().then(() => setPlaying(true)).catch(() => {});
-    return () => { v.pause(); };
+    v.play()
+      .then(() => setPlaying(true))
+      .catch(() => {});
+    return () => {
+      v.pause();
+    };
   }, [item.videoSrc]);
 
   const toggle = useCallback(() => {
     const v = vidRef.current;
     if (!v) return;
-    if (v.paused) { v.play(); setPlaying(true); }
-    else { v.pause(); setPlaying(false); }
+    if (v.paused) {
+      v.play();
+      setPlaying(true);
+    } else {
+      v.pause();
+      setPlaying(false);
+    }
   }, []);
 
   const toggleMute = useCallback(() => {
-    setMuted(m => {
+    setMuted((m) => {
       if (vidRef.current) vidRef.current.muted = !m;
       return !m;
     });
@@ -99,10 +173,15 @@ function ShortCard({
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 px-4 pt-6 pb-3 flex items-center justify-between z-20">
-        <Link href="/" className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs font-bold uppercase tracking-widest">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs font-bold uppercase tracking-widest"
+        >
           <ArrowLeft className="size-4" /> Feed
         </Link>
-        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.border} ${cfg.color} border`}>
+        <span
+          className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.border} ${cfg.color} border`}
+        >
           {cfg.icon} {cfg.label}
         </span>
       </div>
@@ -138,7 +217,9 @@ function ShortCard({
           </p>
         )}
         <div className="flex items-center gap-3 text-xs text-white/50">
-          <span className="flex items-center gap-1"><Clock className="size-3" /> {formatTime(item.highlight.startTime)}</span>
+          <span className="flex items-center gap-1">
+            <Clock className="size-3" /> {formatTime(item.highlight.startTime)}
+          </span>
           <span>•</span>
           <span>{Math.round(item.highlight.endTime - item.highlight.startTime)}s clip</span>
           <span>•</span>
@@ -182,13 +263,7 @@ function ShortCard({
 }
 
 // ── Desktop grid card ─────────────────────────────────────────────────────────
-function HighlightCard({
-  item, active, onActivate,
-}: {
-  item: FeedItem;
-  active: boolean;
-  onActivate: () => void;
-}) {
+function HighlightCard({ item, active, onActivate }: { item: FeedItem; active: boolean; onActivate: () => void }) {
   const vidRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
@@ -201,7 +276,9 @@ function HighlightCard({
     if (!v) return;
     if (active) {
       v.currentTime = 0;
-      v.play().then(() => setPlaying(true)).catch(() => {});
+      v.play()
+        .then(() => setPlaying(true))
+        .catch(() => {});
     } else {
       v.pause();
       setPlaying(false);
@@ -212,8 +289,13 @@ function HighlightCard({
     e.stopPropagation();
     const v = vidRef.current;
     if (!v) return;
-    if (v.paused) { v.play(); setPlaying(true); }
-    else { v.pause(); setPlaying(false); }
+    if (v.paused) {
+      v.play();
+      setPlaying(true);
+    } else {
+      v.pause();
+      setPlaying(false);
+    }
   }, []);
 
   const pct = duration > 0 ? (current / duration) * 100 : 0;
@@ -228,9 +310,11 @@ function HighlightCard({
       transition={{ duration: 0.25 }}
       onClick={onActivate}
       className={`group relative flex flex-col bg-zinc-950 rounded-xl overflow-hidden border cursor-pointer transition-all duration-300
-        ${active
-          ? "border-primary/50 shadow-[0_0_32px_rgba(16,185,129,0.15)] scale-[1.01]"
-          : "border-zinc-800/60 hover:border-zinc-700 hover:scale-[1.005]"}`}
+ ${
+   active
+     ? "border-primary/50 shadow-[0_0_32px_rgba(16,185,129,0.15)] scale-[1.01]"
+     : "border-zinc-800/60 hover:border-zinc-700 hover:scale-[1.005]"
+ }`}
     >
       {/* Video */}
       <div className="relative aspect-video bg-black overflow-hidden">
@@ -257,7 +341,9 @@ function HighlightCard({
         )}
 
         {/* Event type badge */}
-        <div className={`absolute top-2 right-2 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+        <div
+          className={`absolute top-2 right-2 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.border} ${cfg.color}`}
+        >
           {cfg.icon} {cfg.label}
         </div>
 
@@ -279,24 +365,38 @@ function HighlightCard({
           onClick={toggle}
         >
           <div className="size-12 rounded-full bg-black/60 border border-white/20 flex items-center justify-center">
-            {playing
-              ? <Pause className="size-5 fill-white text-white" />
-              : <Play className="size-5 fill-white text-white ml-0.5" />}
+            {playing ? (
+              <Pause className="size-5 fill-white text-white" />
+            ) : (
+              <Play className="size-5 fill-white text-white ml-0.5" />
+            )}
           </div>
         </div>
 
         {/* Bottom controls (active only) */}
         {active && (
-          <div className="absolute bottom-1 left-2 right-2 flex items-center justify-between" onClick={e => e.stopPropagation()}>
+          <div
+            className="absolute bottom-1 left-2 right-2 flex items-center justify-between"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-1.5 text-[10px] text-white/60 font-mono tabular-nums">
               {formatTime(current)} / {formatTime(duration || clipDur)}
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => { setMuted(m => { if (vidRef.current) vidRef.current.muted = !m; return !m; }); }}
+                onClick={() => {
+                  setMuted((m) => {
+                    if (vidRef.current) vidRef.current.muted = !m;
+                    return !m;
+                  });
+                }}
                 className="p-1 rounded-full hover:bg-white/20 transition-colors"
               >
-                {muted ? <VolumeX className="size-3.5 text-white/60" /> : <Volume2 className="size-3.5 text-white/60" />}
+                {muted ? (
+                  <VolumeX className="size-3.5 text-white/60" />
+                ) : (
+                  <Volume2 className="size-3.5 text-white/60" />
+                )}
               </button>
             </div>
           </div>
@@ -306,9 +406,7 @@ function HighlightCard({
       {/* Meta */}
       <div className="p-3 space-y-2">
         {item.highlight.commentary && (
-          <p className="text-xs text-zinc-300 line-clamp-2 leading-relaxed font-medium">
-            {item.highlight.commentary}
-          </p>
+          <p className="text-xs text-zinc-300 line-clamp-2 leading-relaxed font-medium">{item.highlight.commentary}</p>
         )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
@@ -319,7 +417,7 @@ function HighlightCard({
           </div>
           <Link
             href={`/matches/${item.matchId}`}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             className="text-[10px] text-primary/60 hover:text-primary font-bold uppercase tracking-wider transition-colors"
           >
             Full Match →
@@ -348,7 +446,7 @@ export default function HighlightsFeedPage() {
       try {
         const matches: MatchSummary[] = await client.getMatches();
         const items: FeedItem[] = [];
-        const completed = matches.filter(m => m.status === "COMPLETED").slice(0, 12);
+        const completed = matches.filter((m) => m.status === "COMPLETED").slice(0, 12);
         await Promise.all(
           completed.map(async (ms) => {
             try {
@@ -363,8 +461,10 @@ export default function HighlightsFeedPage() {
                   });
                 }
               }
-            } catch { /* skip */ }
-          })
+            } catch {
+              /* skip */
+            }
+          }),
         );
         items.sort((a, b) => b.highlight.score - a.highlight.score);
         setFeed(items);
@@ -378,11 +478,11 @@ export default function HighlightsFeedPage() {
 
   const filtered = useMemo(() => {
     if (filterType === "ALL") return feed;
-    return feed.filter(f => (f.highlight.eventType ?? "").toUpperCase() === filterType);
+    return feed.filter((f) => (f.highlight.eventType ?? "").toUpperCase() === filterType);
   }, [feed, filterType]);
 
   const allTypes = useMemo(() => {
-    const s = new Set(feed.map(f => (f.highlight.eventType ?? "HIGHLIGHT").toUpperCase()));
+    const s = new Set(feed.map((f) => (f.highlight.eventType ?? "HIGHLIGHT").toUpperCase()));
     return Array.from(s);
   }, [feed]);
 
@@ -407,8 +507,8 @@ export default function HighlightsFeedPage() {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  const prev = () => setActiveIdx(i => Math.max(0, i - 1));
-  const next = () => setActiveIdx(i => Math.min(filtered.length - 1, i + 1));
+  const prev = () => setActiveIdx((i) => Math.max(0, i - 1));
+  const next = () => setActiveIdx((i) => Math.min(filtered.length - 1, i + 1));
 
   // ── Mobile Shorts layout ──────────────────────────────────────────────────
   const MobileFeed = (
@@ -428,19 +528,22 @@ export default function HighlightsFeedPage() {
           <p className="text-sm text-white/40 text-center px-8">
             {feed.length === 0 ? "No highlights yet — upload a match first." : "No clips for this filter."}
           </p>
-          <Link href="/" className="text-xs text-primary font-bold uppercase tracking-wide">Upload →</Link>
+          <Link href="/" className="text-xs text-primary font-bold uppercase tracking-wide">
+            Upload →
+          </Link>
         </div>
       )}
-      {!loading && filtered.map((item, idx) => (
-        <ShortCard
-          key={`${item.matchId}-${item.highlight.id}`}
-          item={item}
-          onNext={() => scrollToShort(Math.min(idx + 1, filtered.length - 1))}
-          onPrev={() => scrollToShort(Math.max(idx - 1, 0))}
-          hasNext={idx < filtered.length - 1}
-          hasPrev={idx > 0}
-        />
-      ))}
+      {!loading &&
+        filtered.map((item, idx) => (
+          <ShortCard
+            key={`${item.matchId}-${item.highlight.id}`}
+            item={item}
+            onNext={() => scrollToShort(Math.min(idx + 1, filtered.length - 1))}
+            onPrev={() => scrollToShort(Math.max(idx - 1, 0))}
+            hasNext={idx < filtered.length - 1}
+            hasPrev={idx > 0}
+          />
+        ))}
 
       {/* Floating short counter */}
       {filtered.length > 0 && (
@@ -465,22 +568,29 @@ export default function HighlightsFeedPage() {
           {/* Type filters */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
-              onClick={() => { setFilterType("ALL"); setActiveIdx(0); }}
+              onClick={() => {
+                setFilterType("ALL");
+                setActiveIdx(0);
+              }}
               className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border transition-all
-                ${filterType === "ALL" ? "bg-primary/15 border-primary/40 text-primary" : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"}`}
+ ${filterType === "ALL" ? "bg-primary/15 border-primary/40 text-primary" : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"}`}
             >
               All ({feed.length})
             </button>
-            {allTypes.map(t => {
+            {allTypes.map((t) => {
               const cfg = evStyle(t);
               return (
                 <button
                   key={t}
-                  onClick={() => { setFilterType(t); setActiveIdx(0); }}
+                  onClick={() => {
+                    setFilterType(t);
+                    setActiveIdx(0);
+                  }}
                   className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border transition-all
-                    ${filterType === t ? `${cfg.bg} ${cfg.border} ${cfg.color}` : "border-white/10 text-zinc-400 hover:border-white/20"}`}
+ ${filterType === t ? `${cfg.bg} ${cfg.border} ${cfg.color}` : "border-white/10 text-zinc-400 hover:border-white/20"}`}
                 >
-                  {cfg.icon} {cfg.label} ({feed.filter(f => (f.highlight.eventType ?? "").toUpperCase() === t).length})
+                  {cfg.icon} {cfg.label} ({feed.filter((f) => (f.highlight.eventType ?? "").toUpperCase() === t).length}
+                  )
                 </button>
               );
             })}
@@ -500,9 +610,13 @@ export default function HighlightsFeedPage() {
           <div className="flex flex-col items-center justify-center py-32 gap-4 border border-dashed border-white/10 rounded-2xl">
             <Film className="size-12 text-white/10" />
             <p className="text-sm text-zinc-500">
-              {feed.length === 0 ? "No highlights — upload and analyze a match first." : "No highlights for this filter."}
+              {feed.length === 0
+                ? "No highlights — upload and analyze a match first."
+                : "No highlights for this filter."}
             </p>
-            <Link href="/" className="text-xs text-primary hover:text-primary/80 font-bold uppercase tracking-wide">Upload a match →</Link>
+            <Link href="/" className="text-xs text-primary hover:text-primary/80 font-bold uppercase tracking-wide">
+              Upload a match →
+            </Link>
           </div>
         )}
 
@@ -512,17 +626,33 @@ export default function HighlightsFeedPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {filterType !== "ALL" && (
-                  <button onClick={() => { setFilterType("ALL"); setActiveIdx(0); }} className="text-xs text-zinc-500 hover:text-white transition-colors underline">
+                  <button
+                    onClick={() => {
+                      setFilterType("ALL");
+                      setActiveIdx(0);
+                    }}
+                    className="text-xs text-zinc-500 hover:text-white transition-colors underline"
+                  >
                     Clear filter
                   </button>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={prev} disabled={activeIdx === 0} className="p-2 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                <button
+                  onClick={prev}
+                  disabled={activeIdx === 0}
+                  className="p-2 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
                   <ChevronLeft className="size-4" />
                 </button>
-                <span className="text-xs text-zinc-500 tabular-nums font-mono min-w-12 text-center">{activeIdx + 1} / {filtered.length}</span>
-                <button onClick={next} disabled={activeIdx >= filtered.length - 1} className="p-2 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                <span className="text-xs text-zinc-500 tabular-nums font-mono min-w-12 text-center">
+                  {activeIdx + 1} / {filtered.length}
+                </span>
+                <button
+                  onClick={next}
+                  disabled={activeIdx >= filtered.length - 1}
+                  className="p-2 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
                   <ChevronRight className="size-4" />
                 </button>
               </div>
@@ -553,22 +683,33 @@ export default function HighlightsFeedPage() {
       <div className="sm:hidden fixed inset-0 z-100 bg-black">
         {/* Filter pills — fixed top over the video */}
         {!loading && (
-          <div className="absolute top-0 left-0 right-0 z-50 flex gap-1.5 px-3 pt-4 pb-2 overflow-x-auto bg-linear-to-b from-black/70 to-transparent" style={{ scrollbarWidth: "none" }}>
+          <div
+            className="absolute top-0 left-0 right-0 z-50 flex gap-1.5 px-3 pt-4 pb-2 overflow-x-auto bg-linear-to-b from-black/70 to-transparent"
+            style={{ scrollbarWidth: "none" }}
+          >
             <button
-              onClick={() => { setFilterType("ALL"); setShortIdx(0); setTimeout(() => scrollToShort(0), 50); }}
+              onClick={() => {
+                setFilterType("ALL");
+                setShortIdx(0);
+                setTimeout(() => scrollToShort(0), 50);
+              }}
               className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border transition-all
-                ${filterType === "ALL" ? "bg-primary text-black border-primary" : "bg-black/60 border-white/20 text-white/70"}`}
+ ${filterType === "ALL" ? "bg-primary text-black border-primary" : "bg-black/60 border-white/20 text-white/70"}`}
             >
               All
             </button>
-            {allTypes.map(t => {
+            {allTypes.map((t) => {
               const cfg = evStyle(t);
               return (
                 <button
                   key={t}
-                  onClick={() => { setFilterType(t); setShortIdx(0); setTimeout(() => scrollToShort(0), 50); }}
+                  onClick={() => {
+                    setFilterType(t);
+                    setShortIdx(0);
+                    setTimeout(() => scrollToShort(0), 50);
+                  }}
                   className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border transition-all
-                    ${filterType === t ? `${cfg.bg} ${cfg.border} ${cfg.color}` : "bg-black/60 border-white/20 text-white/70"}`}
+ ${filterType === t ? `${cfg.bg} ${cfg.border} ${cfg.color}` : "bg-black/60 border-white/20 text-white/70"}`}
                 >
                   {cfg.icon} {cfg.label}
                 </button>

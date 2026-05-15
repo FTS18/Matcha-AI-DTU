@@ -16,7 +16,9 @@ export function Footer() {
   const handleVersionClick = () => {
     clickCount.current += 1;
     if (clickTimer.current) clearTimeout(clickTimer.current);
-    clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 800);
+    clickTimer.current = setTimeout(() => {
+      clickCount.current = 0;
+    }, 800);
     if (clickCount.current >= 3) {
       clickCount.current = 0;
       toggleAdmin();
@@ -42,7 +44,6 @@ export function Footer() {
     <footer className="w-full border-t border-border bg-card/50 mt-auto">
       <div className="max-w-360 mx-auto px-6 md:px-8 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-center">
-
           {/* Left: Branding & Version */}
           <div className="flex flex-row items-center gap-3 sm:gap-4 text-muted-foreground group">
             <div className="flex items-center gap-2">
@@ -64,11 +65,15 @@ export function Footer() {
           <div className="hidden sm:flex items-center justify-start lg:justify-center gap-6">
             <div className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">ORCHESTRATOR OK</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                ORCHESTRATOR OK
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">INFERENCE READY</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                INFERENCE READY
+              </span>
             </div>
           </div>
 
@@ -77,7 +82,12 @@ export function Footer() {
             <Link href="/" className="text-muted-foreground hover:text-primary transition-colors">
               DASHBOARD
             </Link>
-            <a href="https://github.com/matcha-ai" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+            <a
+              href="https://github.com/matcha-ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
               SOURCE
             </a>
             {/* Admin mode toggle button */}
@@ -90,22 +100,31 @@ export function Footer() {
                   : "border-border text-muted-foreground/50 hover:text-amber-400/70 hover:border-amber-400/30 bg-transparent"
               }`}
             >
-              {isAdmin
-                ? <><ShieldCheck className="size-3" /><span>ADMIN</span></>
-                : <><ShieldOff className="size-3" /><span>ADMIN</span></>
-              }
+              {isAdmin ? (
+                <>
+                  <ShieldCheck className="size-3" />
+                  <span>ADMIN</span>
+                </>
+              ) : (
+                <>
+                  <ShieldOff className="size-3" />
+                  <span>ADMIN</span>
+                </>
+              )}
             </button>
           </div>
-
         </div>
 
         {/* Bottom Rule */}
         <div className="mt-6 pt-4 border-t border-border flex flex-wrap justify-between items-center gap-3 text-[9px] font-mono text-muted-foreground/60 uppercase tracking-widest">
           <span>
-            {isAdmin
-              ? <span className="text-amber-400/80 flex items-center gap-1.5"><ShieldCheck className="size-3 inline" /> ADMIN MODE ACTIVE</span>
-              : "SECURE UPLINK ESTABLISHED"
-            }
+            {isAdmin ? (
+              <span className="text-amber-400/80 flex items-center gap-1.5">
+                <ShieldCheck className="size-3 inline" /> ADMIN MODE ACTIVE
+              </span>
+            ) : (
+              "SECURE UPLINK ESTABLISHED"
+            )}
           </span>
 
           {/* Ad overlay controls — only visible in admin mode */}
@@ -113,7 +132,11 @@ export function Footer() {
             <div className="flex items-center gap-2">
               {adOverlayUrl ? (
                 <>
-                  <img src={adOverlayUrl} alt="ad preview" className="h-6 w-auto rounded border border-amber-400/30 object-contain" />
+                  <img
+                    src={adOverlayUrl}
+                    alt="ad preview"
+                    className="h-6 w-auto rounded border border-amber-400/30 object-contain"
+                  />
                   <span className="text-amber-400/70">AD ACTIVE</span>
                   <button
                     onClick={() => setAdOverlayUrl(null)}
@@ -133,13 +156,7 @@ export function Footer() {
                   <span>SET AD OVERLAY</span>
                 </button>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAdUpload}
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAdUpload} />
             </div>
           )}
 

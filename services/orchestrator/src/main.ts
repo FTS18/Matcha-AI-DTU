@@ -61,7 +61,7 @@ async function bootstrap() {
     const server = await app.listen(PORT);
     server.setTimeout(REQUEST_TIMEOUT);
 
-    console.log(`🚀 Orchestrator running on http://localhost:${PORT}/api/v1`);
+    console.log(` Orchestrator running on http://localhost:${PORT}/api/v1`);
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

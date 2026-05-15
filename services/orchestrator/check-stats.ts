@@ -1,4 +1,3 @@
-
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -9,14 +8,14 @@ async function main() {
   const highlights = await prisma.highlight.count();
   const durationSum = await prisma.match.aggregate({
     _sum: { duration: true },
-    where: { status: 'COMPLETED' }
+    where: { status: 'COMPLETED' },
   });
-  
+
   console.log({
     matches,
     events,
     highlights,
-    totalDuration: durationSum._sum.duration || 0
+    totalDuration: durationSum._sum.duration || 0,
   });
 }
 

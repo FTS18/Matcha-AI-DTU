@@ -1,0 +1,65 @@
+name: Bug Report
+description: File a report to help us improve Matcha AI
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: I was trying to...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How do we see the bug ourselves?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Component Area
+      description: Where did you find this bug?
+      options:
+        - Frontend (Web)
+        - Backend (Orchestrator)
+        - AI Services (Inference)
+        - Mobile App
+        - Documentation
+        - CI/CD / Infrastructure
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Environment Info
+      description: e.g. Node version, OS, Browser
+      placeholder: Node v20.11.0, Chrome 122, Windows 11
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate.
+          required: true
+        - label: I am using the latest version of the repository.
+          required: true

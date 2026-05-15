@@ -10,7 +10,7 @@ export interface CopyButtonProps {
 
 export function CopyButton({ text, className = "" }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
-  
+
   const copy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await navigator.clipboard.writeText(text);
@@ -25,11 +25,7 @@ export function CopyButton({ text, className = "" }: CopyButtonProps) {
       title="Copy to clipboard"
       aria-label="Copy to clipboard"
     >
-      {copied ? (
-        <Check className="w-3 h-3 text-emerald-400" />
-      ) : (
-        <Copy className="w-3 h-3" />
-      )}
+      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
     </button>
   );
 }

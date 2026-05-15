@@ -1,0 +1,31 @@
+# Dependabot configuration for Matcha AI
+version: 2
+updates:
+  # Maintain dependencies for npm (Next.js, NestJS, shared packages)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "chore"
+
+  # Maintain dependencies for pip (FastAPI / Inference service)
+  - package-ecosystem: "pip"
+    directory: "/services/inference"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "chore"
+
+  # Maintain GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "chore"

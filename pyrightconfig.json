@@ -1,16 +1,16 @@
 {
-  "pythonVersion": "3.9",
-  "pythonPlatform": "Darwin",
-  "typeCheckingMode": "basic",
-  "include": [
-    "services/inference/app"
-  ],
-  "exclude": [
-    "**/node_modules",
-    "**/__pycache__",
-    ".venv",
-    "venv"
-  ],
-  "venvPath": "services/inference",
-  "venv": "venv"
+ "pythonVersion": "3.9",
+ "pythonPlatform": "Darwin",
+ "typeCheckingMode": "basic",
+ "include": [
+ "services/inference/app"
+ ],
+ "exclude": [
+ "**/node_modules",
+ "**/__pycache__",
+ ".venv",
+ "venv"
+ ],
+ "venvPath": "services/inference",
+ "venv": "venv"
 }

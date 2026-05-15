@@ -21,11 +21,11 @@ export function useMatchSocket({ matchId, url, enabled = true }: UseMatchSocketO
   useEffect(() => {
     if (!enabled || !matchId) return;
 
-    const socket: Socket = io(url, { 
+    const socket: Socket = io(url, {
       transports: ["websocket"],
       reconnectionAttempts: 5,
     });
-    
+
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -39,11 +39,11 @@ export function useMatchSocket({ matchId, url, enabled = true }: UseMatchSocketO
 
     socket.on("matchEvent", (payload: { matchId: string; event: MatchEvent }) => {
       if (payload.matchId !== matchId) return;
-      
-      setLiveEvents(prev => {
+
+      setLiveEvents((prev) => {
         const exists = prev.some(
-          e => e.id === payload.event.id || 
-               (e.timestamp === payload.event.timestamp && e.type === payload.event.type)
+          (e) =>
+            e.id === payload.event.id || (e.timestamp === payload.event.timestamp && e.type === payload.event.type),
         );
         if (exists) return prev;
         return [...prev, payload.event];
@@ -64,7 +64,7 @@ export function useMatchSocket({ matchId, url, enabled = true }: UseMatchSocketO
     // Real-time tracking overlay frames streamed from inference
     socket.on("trackingUpdate", (payload: { matchId: string; frames: TrackFrame[] }) => {
       if (payload.matchId !== matchId || !payload.frames?.length) return;
-      setLiveTrackingFrames(prev => {
+      setLiveTrackingFrames((prev) => {
         // Merge new frames in, keeping sorted by time, capped at 10000 frames to avoid memory blowup
         const merged = [...prev, ...payload.frames].sort((a, b) => a.t - b.t);
         return merged.length > 10000 ? merged.slice(merged.length - 10000) : merged;

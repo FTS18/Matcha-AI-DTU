@@ -1,0 +1,36 @@
+# Rules for auto-labeling Pull Requests based on modified files
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: "apps/web/**/*"
+
+mobile:
+  - changed-files:
+      - any-glob-to-any-file: "apps/mobile/**/*"
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file: "services/orchestrator/**/*"
+
+python:
+  - changed-files:
+      - any-glob-to-any-file: "services/inference/**/*"
+
+infrastructure:
+  - changed-files:
+      - any-glob-to-any-file: "docker-compose.yml"
+      - any-glob-to-any-file: ".github/workflows/**/*"
+      - any-glob-to-any-file: ".devcontainer/**/*"
+
+shared-packages:
+  - changed-files:
+      - any-glob-to-any-file: "packages/**/*"
+
+database:
+  - changed-files:
+      - any-glob-to-any-file: "packages/database/**/*"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.md"
+      - any-glob-to-any-file: "docs/**/*"

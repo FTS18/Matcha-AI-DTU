@@ -36,15 +36,16 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body suppressHydrationWarning className="antialiased min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary">
+      <body
+        suppressHydrationWarning
+        className="antialiased min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary"
+      >
         <AuthProvider>
           <AdminProvider>
             <SplashScreen />
             <div className="flex-1 flex flex-col relative w-full">
               <Navbar />
-              <main className="flex-1 flex flex-col items-stretch w-full relative z-10">
-                {children}
-              </main>
+              <main className="flex-1 flex flex-col items-stretch w-full relative z-10">{children}</main>
               <Footer />
             </div>
           </AdminProvider>

@@ -2,7 +2,7 @@
 
 The centralized data layer for the Matcha AI platform, containing the Prisma schema and generated client.
 
-## 🚀 Commands
+## Commands
 
 Manage the database from the monorepo root:
 
@@ -17,19 +17,19 @@ npx turbo run db:migrate -- --name your_migration_name
 cd packages/database && npx prisma studio
 ```
 
-## 🏗 Schema Design
+## Schema Design
 
 The schema is optimized for sports analytics, with dedicated relations for:
+
 - **Matches**: Core metadata, video assets, and analysis status.
 - **Events**: Temporal markers, event types, and detection confidence.
 - **Teams**: Jersey colors and team identifiers.
 - **Users**: Authentication and ownership.
 
-## 🛠 Usage
+## Usage
 
 ```ts
 import { prisma } from "@matcha/database";
 
 const match = await prisma.match.findUnique({ ... });
 ```
-

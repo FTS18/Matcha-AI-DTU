@@ -1,24 +1,25 @@
 {
-  "name": "matcha-ai-dtu",
-  "version": "0.0.0",
-  "private": true,
-  "workspaces": [
-    "apps/web",
-    "packages/*",
-    "services/*"
-  ],
-  "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
-  },
-  "devDependencies": {
-    "prettier": "latest",
-    "turbo": "latest"
-  },
-  "packageManager": "npm@10.0.0",
-  "dependencies": {
-    "rxjs": "^7.8.2"
-  }
+ "name": "matcha-ai-dtu",
+ "version": "0.0.0",
+ "private": true,
+ "workspaces": [
+ "apps/web",
+ "packages/*",
+ "services/*"
+ ],
+ "scripts": {
+ "build": "turbo run build",
+ "dev": "turbo run dev",
+ "lint": "turbo run lint",
+ "format": "prettier --write \"**/*.{ts,tsx,md}\""
+ },
+ "devDependencies": {
+ "prettier": "latest",
+ "prisma": "^7.8.0",
+ "turbo": "latest"
+ },
+ "packageManager": "npm@10.0.0",
+ "dependencies": {
+ "rxjs": "^7.8.2"
+ }
 }

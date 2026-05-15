@@ -124,7 +124,6 @@ export class MatchesService {
               video_url: videoUrl,
               start_time: startTime,
               end_time: endTime,
-
             },
             { timeout: 30000 },
           ) as any,
@@ -185,7 +184,7 @@ export class MatchesService {
   addLiveEvent(id: string, event: any) {
     /**
      * Called by the inference service for EACH detected event immediately,
-     * before the full analysis completes.  We broadcast it via WebSocket so
+     * before the full analysis completes. We broadcast it via WebSocket so
      * the browser can populate the event feed in real-time.
      * We do NOT save to DB here – the final complete() call saves everything.
      */
@@ -225,9 +224,11 @@ export class MatchesService {
           `Failed to update progress for match ${id}: ${err.message}`,
         );
       });
-    this.eventsGateway.server
-      .to(id)
-      .emit(WsEvents.PROGRESS, { matchId: id, progress, stage: stage || undefined });
+    this.eventsGateway.server.to(id).emit(WsEvents.PROGRESS, {
+      matchId: id,
+      progress,
+      stage: stage || undefined,
+    });
   }
 
   async completeMatch(id: string, payload: AnalysisPayload) {
@@ -454,9 +455,7 @@ export class MatchesService {
       where: { id: highlightId },
       data: updateData,
     });
-    this.logger.log(
-      `Highlight ${highlightId} updated on match ${matchId}`,
-    );
+    this.logger.log(`Highlight ${highlightId} updated on match ${matchId}`);
     return updated;
   }
 
@@ -478,15 +477,16 @@ export class MatchesService {
   }
 
   async getGlobalStats() {
-    const [matchesCount, eventsCount, highlightsCount, durationAgg] = await Promise.all([
-      this.prisma.match.count({ where: { status: 'COMPLETED' } }),
-      this.prisma.event.count(),
-      this.prisma.highlight.count(),
-      this.prisma.match.aggregate({
-        _sum: { duration: true },
-        where: { status: 'COMPLETED' },
-      }),
-    ]);
+    const [matchesCount, eventsCount, highlightsCount, durationAgg] =
+      await Promise.all([
+        this.prisma.match.count({ where: { status: 'COMPLETED' } }),
+        this.prisma.event.count(),
+        this.prisma.highlight.count(),
+        this.prisma.match.aggregate({
+          _sum: { duration: true },
+          where: { status: 'COMPLETED' },
+        }),
+      ]);
 
     return {
       totalMatches: matchesCount,

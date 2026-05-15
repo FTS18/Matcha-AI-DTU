@@ -1,0 +1,12 @@
+# CODEOWNERS file for Matcha-AI-DTU
+# This file ensures @FTS18 is automatically added as a reviewer for all changes.
+
+# Catch-all: Everything is owned by the main maintainer
+*       @FTS18
+
+# Specific folder ownership (if you add more maintainers later)
+/apps/web/           @FTS18
+/apps/mobile/        @FTS18
+/services/           @FTS18
+/packages/           @FTS18
+/.github/            @FTS18

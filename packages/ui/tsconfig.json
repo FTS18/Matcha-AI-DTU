@@ -1,18 +1,18 @@
 {
-    "extends": "../typescript-config/react-library.json",
-    "compilerOptions": {
-        "outDir": "./dist",
-        "rootDir": "src",
-        "declaration": true,
-        "jsx": "react-jsx",
-        "baseUrl": "."
-    },
-    "include": [
-        "src/**/*.ts",
-        "src/**/*.tsx"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+ "extends": "../typescript-config/react-library.json",
+ "compilerOptions": {
+ "outDir": "./dist",
+ "rootDir": "src",
+ "declaration": true,
+ "jsx": "react-jsx",
+ "baseUrl": "."
+ },
+ "include": [
+ "src/**/*.ts",
+ "src/**/*.tsx"
+ ],
+ "exclude": [
+ "node_modules",
+ "dist"
+ ]
 }

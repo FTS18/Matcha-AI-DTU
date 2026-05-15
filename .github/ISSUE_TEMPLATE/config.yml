@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+ - name: Read the Roadmap before opening an issue
+ url: https://github.com/FTs18/Matcha-AI-DTU/blob/main/ROADMAP.md
+ about: Browse planned features and find a task that matches your skill level. Every task is labeled Beginner, Intermediate, or Advanced.
+ - name: First time contributing to open source?
+ url: https://github.com/FTs18/Matcha-AI-DTU/blob/main/FIRST_CONTRIBUTION.md
+ about: Read this guide before anything else. It explains forking, branching, and pull requests in plain English.
+ - name: Ask a question or introduce yourself
+ url: https://github.com/FTs18/Matcha-AI-DTU/discussions
+ about: Use GitHub Discussions for questions, ideas, and introductions. Issues are only for bugs and approved features.
+ - name: Unfamiliar with a term in the codebase?
+ url: https://github.com/FTs18/Matcha-AI-DTU/blob/main/GLOSSARY.md
+ about: Check the Glossary for plain-English explanations of every technical term used in this project.

@@ -15,7 +15,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const router = useRouter();
 
@@ -29,20 +29,25 @@ export default function RegisterPage() {
       const nameParts = name.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || nameParts[0] || "User";
-      
-      const response = await api.register({ email, password, firstName, lastName });
+
+      const response = await api.register({
+        email,
+        password,
+        firstName,
+        lastName,
+      });
       login(response.access_token, response.user);
     } catch (err: any) {
       let msg = err.message;
-      try { 
-        const parsed = JSON.parse(msg); 
+      try {
+        const parsed = JSON.parse(msg);
         if (parsed.errors && Array.isArray(parsed.errors)) {
-          msg = parsed.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(", ");
+          msg = parsed.errors.map((e: any) => `${e.path.join(".")}: ${e.message}`).join(", ");
         } else if (parsed.message) {
           msg = parsed.message;
         }
       } catch (e) {}
-      
+
       if (Array.isArray(msg)) msg = msg.join(", ");
       setError(msg || "Failed to register account.");
     } finally {
@@ -59,9 +64,7 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
             Create Account
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Join Matcha to generate tactical match analytics.
-          </p>
+          <p className="text-sm text-muted-foreground">Join Matcha to generate tactical match analytics.</p>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-5">

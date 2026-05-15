@@ -12,11 +12,7 @@ export interface MatchSocketHandlers {
  * Connects to the orchestrator, joins a match room, and subscribes to real-time events.
  * Returns a cleanup function — call it on unmount to disconnect.
  */
-export function createMatchSocket(
-  url: string,
-  matchId: string,
-  handlers: MatchSocketHandlers
-): () => void {
+export function createMatchSocket(url: string, matchId: string, handlers: MatchSocketHandlers): () => void {
   const socket: Socket = io(url, { transports: ["websocket"] });
   socket.emit(WsEvents.JOIN_MATCH, matchId);
 

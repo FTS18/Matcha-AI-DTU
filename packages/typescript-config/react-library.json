@@ -1,16 +1,16 @@
 {
-    "$schema": "https://json.schemastore.org/tsconfig",
-    "display": "React Library",
-    "extends": "./base.json",
-    "compilerOptions": {
-        "jsx": "react-jsx",
-        "lib": [
-            "dom",
-            "dom.iterable",
-            "esnext"
-        ],
-        "module": "ESNext",
-        "moduleResolution": "bundler",
-        "target": "es6"
-    }
+ "$schema": "https://json.schemastore.org/tsconfig",
+ "display": "React Library",
+ "extends": "./base.json",
+ "compilerOptions": {
+ "jsx": "react-jsx",
+ "lib": [
+ "dom",
+ "dom.iterable",
+ "esnext"
+ ],
+ "module": "ESNext",
+ "moduleResolution": "bundler",
+ "target": "es6"
+ }
 }

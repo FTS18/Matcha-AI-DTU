@@ -3,7 +3,18 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileVideo, X, CheckCircle2, AlertCircle, Loader2, ArrowRight, Clock, Youtube, Scissors } from "lucide-react";
+import {
+  Upload,
+  FileVideo,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  ArrowRight,
+  Clock,
+  Youtube,
+  Scissors,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from "socket.io-client";
 import { createApiClient, WsEvents, PIPELINE_STAGES, isYoutubeUrl, extractYoutubeId } from "@matcha/shared";
@@ -13,11 +24,11 @@ const api = createApiClient(ORCHESTRATOR_URL);
 
 // ── Duration preset options ─────────────────────────────────────────────────
 const DURATION_PRESETS = [
-  { label: "2 MIN",  secs: 120 },
-  { label: "3 MIN",  secs: 180 },
-  { label: "5 MIN",  secs: 300 },
+  { label: "2 MIN", secs: 120 },
+  { label: "3 MIN", secs: 180 },
+  { label: "5 MIN", secs: 300 },
   { label: "10 MIN", secs: 600 },
-  { label: "FULL",   secs: 0 },   // 0 = no trim, process full video
+  { label: "FULL", secs: 0 }, // 0 = no trim, process full video
 ];
 
 function formatMMSS(totalSecs: number): string {
@@ -41,7 +52,12 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
   const [currentStage, setCurrentStage] = useState<string>("");
 
   // ── YouTube info state ──────────────────────────────────────────────────
-  const [ytInfo, setYtInfo] = useState<{ title: string; duration: number; thumbnail: string; channel: string } | null>(null);
+  const [ytInfo, setYtInfo] = useState<{
+    title: string;
+    duration: number;
+    thumbnail: string;
+    channel: string;
+  } | null>(null);
   const [ytLoading, setYtLoading] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<number>(300); // default 5 min
   const [sliderStart, setSliderStart] = useState(0); // seconds
@@ -84,13 +100,17 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
         setYtLoading(false);
       }
     }, 600);
-    return () => { if (fetchTimeout.current) clearTimeout(fetchTimeout.current); };
+    return () => {
+      if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
+    };
   }, [youtubeUrl]);
 
   useEffect(() => {
     const newSocket = io(ORCHESTRATOR_URL);
     setSocket(newSocket);
-    return () => { newSocket.disconnect(); };
+    return () => {
+      newSocket.disconnect();
+    };
   }, []);
 
   // Socket.IO live progress
@@ -99,20 +119,31 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
     socket.emit(WsEvents.JOIN_MATCH, matchId);
 
     const onProgress = (data: { progress: number; stage?: string }) => {
-      if (data.progress === -1) { setStatus("error"); return; }
+      if (data.progress === -1) {
+        setStatus("error");
+        return;
+      }
       setProcessingProgress(Math.min(data.progress, 99));
       if (data.stage) setCurrentStage(data.stage);
-      if (data.progress >= 100) { setProcessingProgress(100); setStatus("success"); }
+      if (data.progress >= 100) {
+        setProcessingProgress(100);
+        setStatus("success");
+      }
     };
     const onComplete = () => {
       setProcessingProgress(100);
       setStatus("success");
-      setTimeout(() => { if (matchId) router.push(`/matches/${matchId}`); }, 1500);
+      setTimeout(() => {
+        if (matchId) router.push(`/matches/${matchId}`);
+      }, 1500);
     };
 
     socket.on(WsEvents.PROGRESS, onProgress);
     socket.on(WsEvents.COMPLETE, onComplete);
-    return () => { socket.off(WsEvents.PROGRESS, onProgress); socket.off(WsEvents.COMPLETE, onComplete); };
+    return () => {
+      socket.off(WsEvents.PROGRESS, onProgress);
+      socket.off(WsEvents.COMPLETE, onComplete);
+    };
   }, [socket, matchId, router]);
 
   // HTTP polling fallback
@@ -122,10 +153,16 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
       try {
         const m = await api.getMatch(matchId);
         if (!m) return;
-        if (m.status === "COMPLETED") { setProcessingProgress(100); setStatus("success"); setTimeout(() => router.push(`/matches/${matchId}`), 1500); }
-        else if (m.status === "FAILED") { setStatus("error"); }
-        else if (typeof m.progress === "number" && m.progress > 0) { setProcessingProgress((prev) => Math.max(prev, Math.min(m.progress ?? 0, 99))); }
-      } catch { }
+        if (m.status === "COMPLETED") {
+          setProcessingProgress(100);
+          setStatus("success");
+          setTimeout(() => router.push(`/matches/${matchId}`), 1500);
+        } else if (m.status === "FAILED") {
+          setStatus("error");
+        } else if (typeof m.progress === "number" && m.progress > 0) {
+          setProcessingProgress((prev) => Math.max(prev, Math.min(m.progress ?? 0, 99)));
+        }
+      } catch {}
     };
     poll();
     const iv = setInterval(poll, 3000);
@@ -133,7 +170,12 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
   }, [matchId, status, router]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles?.length) { setFile(acceptedFiles[0]); setStatus("idle"); setUploadProgress(0); setProcessingProgress(0); }
+    if (acceptedFiles?.length) {
+      setFile(acceptedFiles[0]);
+      setStatus("idle");
+      setUploadProgress(0);
+      setProcessingProgress(0);
+    }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -222,7 +264,9 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
             className="font-mono text-[10px] uppercase tracking-widest px-6 py-3 transition-all duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer bg-primary text-[#07080F] font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
           >
             {uploading ? (
-              <><Loader2 className="size-3 animate-spin" /> ANALYSING...</>
+              <>
+                <Loader2 className="size-3 animate-spin" /> ANALYSING...
+              </>
             ) : (
               "ANALYSE URL"
             )}
@@ -232,7 +276,6 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
         {/* ── YouTube clip selector ──────────────────────────────────────── */}
         {isYoutube && status === "idle" && (
           <div className="flex flex-col gap-3 animate-fade-in border border-border/60 bg-background/60 backdrop-blur-sm p-4 rounded-sm">
-
             {/* Loading state */}
             {ytLoading && (
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -263,7 +306,9 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <Scissors className="size-3 text-muted-foreground" />
-                    <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-widest">Clip duration</span>
+                    <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-widest">
+                      Clip duration
+                    </span>
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
                     {DURATION_PRESETS.map((p) => {
@@ -285,7 +330,7 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                             active
                               ? "bg-primary/20 border-primary/50 text-primary"
                               : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground",
-                            disabled && "opacity-30 cursor-not-allowed"
+                            disabled && "opacity-30 cursor-not-allowed",
                           )}
                         >
                           {p.label}
@@ -301,7 +346,9 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Clock className="size-3 text-muted-foreground" />
-                        <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-widest">Start point</span>
+                        <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-widest">
+                          Start point
+                        </span>
                       </div>
                       <span className="font-mono text-[10px] text-primary font-bold">
                         {formatMMSS(sliderStart)} – {formatMMSS(computedEnd)}
@@ -315,7 +362,10 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                       {/* Selected range overlay */}
                       <div
                         className="absolute top-1/2 -translate-y-1/2 h-1.5 bg-primary/50 rounded-full transition-all"
-                        style={{ left: `${rangeStartPct}%`, width: `${rangeWidthPct}%` }}
+                        style={{
+                          left: `${rangeStartPct}%`,
+                          width: `${rangeWidthPct}%`,
+                        }}
                       />
                       {/* Native range input */}
                       <input
@@ -398,7 +448,7 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
       <div
         {...getRootProps()}
         className={[
-          "drop-zone bracket relative p-10 transition-colors duration-200  focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          "drop-zone bracket relative p-10 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           status !== "idle" || !!youtubeUrl ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
           isDragActive ? "active" : "",
           file ? "has-file" : "",
@@ -408,29 +458,62 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
         <input {...getInputProps()} />
 
         <div className="flex flex-col items-center text-center gap-5">
-
           {/* Icon */}
           <div
-            className={`size-14 flex items-center justify-center border transition-colors ${file ? 'border-primary bg-primary/10' : 'border-border-2 bg-muted'}`}
+            className={`size-14 flex items-center justify-center border transition-colors ${file ? "border-primary bg-primary/10" : "border-border-2 bg-muted"}`}
           >
             {status === "processing" ? (
-              <svg className="animate-spin size-5.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                className="animate-spin size-5.5 text-primary"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
             ) : status === "success" ? (
-              <svg className="size-5.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                className="size-5.5 text-primary"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             ) : status === "error" ? (
-              <svg className="size-5.5 text-destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+              <svg
+                className="size-5.5 text-destructive"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             ) : file ? (
-              <svg className="size-5.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="2" y="2" width="20" height="20" /><path d="M8 10l4-4 4 4M12 6v9" /><path d="M6 18h12" />
+              <svg
+                className="size-5.5 text-primary"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <rect x="2" y="2" width="20" height="20" />
+                <path d="M8 10l4-4 4 4M12 6v9" />
+                <path d="M6 18h12" />
               </svg>
             ) : (
-              <svg className="size-5.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                className="size-5.5 text-muted-foreground"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
@@ -440,7 +523,7 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
 
           {/* Label */}
           <div>
-            <p className={`font-display text-[28px] tracking-[0.05em] ${file ? 'text-primary' : 'text-foreground'}`}>
+            <p className={`font-display text-[28px] tracking-[0.05em] ${file ? "text-primary" : "text-foreground"}`}>
               {isDragActive ? "DROP TO ANALYSE" : file ? file.name.toUpperCase() : "DROP FOOTAGE HERE"}
             </p>
             <p className="font-mono mt-1 text-[9px] text-muted-foreground uppercase tracking-[0.12em]">
@@ -454,7 +537,10 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
           {file && status === "idle" && (
             <div className="flex gap-2">
               <button
-                onClick={(e) => { e.stopPropagation(); uploadFile(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  uploadFile();
+                }}
                 disabled={uploading}
                 className="font-mono text-[10px] uppercase tracking-widest px-7 py-2.5 transition-all duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer bg-primary text-[#07080F] font-medium flex items-center gap-2"
                 aria-label="Analyze Match"
@@ -472,9 +558,7 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                 onClick={removeFile}
                 className="font-mono text-[10px] uppercase tracking-widest px-3 py-2.5 border border-border-2 text-muted-foreground transition-colors duration-200 hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-border-2 cursor-pointer"
                 aria-label="Remove File"
-              >
-                ✕
-              </button>
+              ></button>
             </div>
           )}
 
@@ -486,7 +570,10 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                 <span className="font-mono text-[9px] text-primary">{uploadProgress}%</span>
               </div>
               <div className="h-0.5 bg-border overflow-hidden">
-                <div className="h-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${uploadProgress}%` }} />
+                <div
+                  className="h-full bg-primary transition-[width] duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
               </div>
             </div>
           )}
@@ -501,7 +588,10 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
                 <span className="font-mono text-[9px] text-primary tabular-nums">{processingProgress}%</span>
               </div>
               <div className="h-1 bg-border overflow-hidden rounded-full">
-                <div className="h-full bg-linear-to-r from-primary via-emerald-400 to-cyan-400 transition-[width] duration-500 ease-out rounded-full" style={{ width: `${processingProgress}%` }} />
+                <div
+                  className="h-full bg-linear-to-r from-primary via-emerald-400 to-cyan-400 transition-[width] duration-500 ease-out rounded-full"
+                  style={{ width: `${processingProgress}%` }}
+                />
               </div>
               {currentStage && (
                 <p className="font-mono text-[8px] text-muted-foreground mt-1.5 uppercase tracking-widest animate-pulse">
@@ -529,7 +619,7 @@ export const VideoUpload = React.memo(function VideoUploadContent() {
           {/* Error */}
           {status === "error" && (
             <p className="font-mono text-[9px] text-destructive uppercase tracking-[0.12em]">
-              ✕ UPLOAD FAILED — TRY AGAIN
+              UPLOAD FAILED — TRY AGAIN
             </p>
           )}
         </div>

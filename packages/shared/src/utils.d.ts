@@ -22,5 +22,10 @@ export declare function isYoutubeUrl(url: string): boolean;
 /** Extract video ID from any YouTube URL */
 export declare function extractYoutubeId(url: string): string | null;
 /** Fetch with automatic retries and exponential backoff */
-export declare function fetchWithRetry(url: string, options?: RequestInit, retries?: number, backoff?: number): Promise<Response>;
+export declare function fetchWithRetry(
+  url: string,
+  options?: RequestInit,
+  retries?: number,
+  backoff?: number,
+): Promise<Response>;
 //# sourceMappingURL=utils.d.ts.map

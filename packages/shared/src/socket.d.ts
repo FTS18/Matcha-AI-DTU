@@ -1,8 +1,8 @@
 import type { MatchEvent } from "./types";
 export interface MatchSocketHandlers {
-    onEvent?: (event: MatchEvent) => void;
-    onProgress?: (matchId: string, progress: number) => void;
-    onComplete?: (matchId: string) => void;
+  onEvent?: (event: MatchEvent) => void;
+  onProgress?: (matchId: string, progress: number) => void;
+  onComplete?: (matchId: string) => void;
 }
 /**
  * Connects to the orchestrator, joins a match room, and subscribes to real-time events.

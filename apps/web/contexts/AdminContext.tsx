@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY     = "matcha_admin_mode";
-const AD_STORAGE_KEY  = "matcha_ad_overlay_url";
+const STORAGE_KEY = "matcha_admin_mode";
+const AD_STORAGE_KEY = "matcha_ad_overlay_url";
 
 interface AdminContextValue {
   isAdmin: boolean;
@@ -46,25 +46,40 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleAdmin = useCallback(() => {
-    setIsAdmin(prev => {
+    setIsAdmin((prev) => {
       const next = !prev;
-      try { localStorage.setItem(STORAGE_KEY, String(next)); } catch {}
+      try {
+        localStorage.setItem(STORAGE_KEY, String(next));
+      } catch {}
       return next;
     });
   }, []);
 
   const enableAdmin = useCallback(() => {
     setIsAdmin(true);
-    try { localStorage.setItem(STORAGE_KEY, "true"); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, "true");
+    } catch {}
   }, []);
 
   const disableAdmin = useCallback(() => {
     setIsAdmin(false);
-    try { localStorage.setItem(STORAGE_KEY, "false"); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, "false");
+    } catch {}
   }, []);
 
   return (
-    <AdminContext.Provider value={{ isAdmin, toggleAdmin, enableAdmin, disableAdmin, adOverlayUrl, setAdOverlayUrl }}>
+    <AdminContext.Provider
+      value={{
+        isAdmin,
+        toggleAdmin,
+        enableAdmin,
+        disableAdmin,
+        adOverlayUrl,
+        setAdOverlayUrl,
+      }}
+    >
       {children}
     </AdminContext.Provider>
   );

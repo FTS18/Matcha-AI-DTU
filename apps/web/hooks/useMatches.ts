@@ -18,15 +18,15 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
       setMatches(data);
       // Seed progress map from API data — API is the source of truth
       const serverProgress: ProgressMap = {};
-      data.forEach(m => {
+      data.forEach((m) => {
         if (m.status === "PROCESSING" || m.status === "UPLOADED") {
           serverProgress[m.id] = m.progress ?? 0;
         }
       });
       // Merge: use higher of server vs local for active matches (WebSocket may be ahead)
-      setProgressMap(prev => {
+      setProgressMap((prev) => {
         const merged: ProgressMap = { ...serverProgress };
-        Object.keys(prev).forEach(id => {
+        Object.keys(prev).forEach((id) => {
           if (merged[id] !== undefined && prev[id] > merged[id]) {
             merged[id] = prev[id]; // WebSocket was ahead
           }
@@ -51,9 +51,12 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
         fetchMatches();
         return;
       }
-      setProgressMap(prev => ({ ...prev, [data.matchId]: data.progress }));
+      setProgressMap((prev) => ({ ...prev, [data.matchId]: data.progress }));
       if (data.stage) {
-        setStageMap((prev: StageMap) => ({ ...prev, [data.matchId]: data.stage! }));
+        setStageMap((prev: StageMap) => ({
+          ...prev,
+          [data.matchId]: data.stage!,
+        }));
       }
       if (data.progress >= 100) {
         setTimeout(fetchMatches, 500);
@@ -61,7 +64,7 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
     });
 
     socket.on(WsEvents.COMPLETE, (data: { matchId: string }) => {
-      setProgressMap(prev => ({ ...prev, [data.matchId]: 100 }));
+      setProgressMap((prev) => ({ ...prev, [data.matchId]: 100 }));
       fetchMatches();
     });
 
@@ -74,8 +77,8 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
   // Join rooms for all active matches whenever the match list changes
   useEffect(() => {
     if (!socketRef.current || !Array.isArray(matches)) return;
-    const active = matches.filter(m => m.status === "PROCESSING" || m.status === "UPLOADED");
-    active.forEach(m => {
+    const active = matches.filter((m) => m.status === "PROCESSING" || m.status === "UPLOADED");
+    active.forEach((m) => {
       socketRef.current?.emit(WsEvents.JOIN_MATCH, m.id);
     });
   }, [matches]);
@@ -97,7 +100,7 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
   const deleteMatch = async (id: string) => {
     try {
       await client.deleteMatch(id);
-      setMatches(prev => prev.filter(m => m.id !== id));
+      setMatches((prev) => prev.filter((m) => m.id !== id));
       return true;
     } catch {
       return false;
@@ -114,5 +117,13 @@ export function useMatches(baseUrl: string = "http://localhost:4000") {
     }
   };
 
-  return { matches, loading, progressMap, stageMap, deleteMatch, reanalyzeMatch, refetch: fetchMatches };
+  return {
+    matches,
+    loading,
+    progressMap,
+    stageMap,
+    deleteMatch,
+    reanalyzeMatch,
+    refetch: fetchMatches,
+  };
 }
