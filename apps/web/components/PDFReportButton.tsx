@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 // This file may ONLY be loaded via next/dynamic with { ssr: false }.

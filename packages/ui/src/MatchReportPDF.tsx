@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from "react";
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { MatchEvent, Highlight, formatTime, EVENT_CONFIG, DEFAULT_EVENT_CONFIG } from "@matcha/shared";

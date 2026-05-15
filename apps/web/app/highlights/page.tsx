@@ -417,7 +417,7 @@ function HighlightCard({ item, active, onActivate }: { item: FeedItem; active: b
           </div>
           <Link
             href={`/matches/${item.matchId}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
             className="text-[10px] text-primary/60 hover:text-primary font-bold uppercase tracking-wider transition-colors"
           >
             Full Match →
