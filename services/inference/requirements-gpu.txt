@@ -12,6 +12,6 @@ opencv-python-headless
 psutil>=6.2.1
 python-multipart>=0.0.28
 requests>=2.32.3
-numpy<2.0.0
+numpy<3.0.0
 google-generativeai==0.8.3
 TTS==0.22.0
