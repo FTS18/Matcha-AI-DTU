@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "prettier": "latest",
-    "prisma": "^7.8.0",
+    "prisma": "^5.22.0",
     "turbo": "latest"
   },
   "packageManager": "npm@10.9.8",
