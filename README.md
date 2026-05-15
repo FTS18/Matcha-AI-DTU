@@ -309,6 +309,14 @@ Matcha-AI-DTU/
 
 ---
 
+## 🛡 Maintenance & Security
+
+This project prioritizes long-term stability and functional reliability. We maintain a strict versioning policy for core frameworks to ensure compatibility across our AI pipeline and reporting tools.
+
+For details on our security posture, known vulnerabilities, and why certain major upgrades (like React 19 or Next.js 16) are currently deferred, please refer to our **[MAINTENANCE.md](./MAINTENANCE.md)**.
+
+---
+
 ## 📚 Documentation
 
 | Document | Description |
