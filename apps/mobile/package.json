@@ -32,7 +32,6 @@
   },
   "overrides": {
     "@xmldom/xmldom": "^0.9.10",
-    "tar": "^6.2.1",
     "xmldom": "^0.9.5"
   },
   "private": true
