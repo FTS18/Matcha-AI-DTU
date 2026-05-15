@@ -60,6 +60,82 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 const FILTER_OPTIONS = ["ALL", "COMPLETED", "PROCESSING", "UPLOADED", "FAILED"] as const;
 type FilterOption = (typeof FILTER_OPTIONS)[number];
 
+/* ── Skeleton Card ────────────────────────────────────────── */
+const MatchCardSkeleton = React.memo(function MatchCardSkeleton({ index }: { index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.3 }}
+      className="card relative bg-card/40 backdrop-blur-md border border-white/5 overflow-hidden"
+    >
+      {/* Left accent bar (desktop) */}
+      <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-1 bg-muted/60 animate-pulse" />
+
+      {/* ── MOBILE SKELETON ── */}
+      <div className="lg:hidden">
+        {/* Thumbnail placeholder */}
+        <div className="relative w-full h-40 bg-muted/40 animate-pulse">
+          <div className="absolute top-3 left-3 w-16 h-5 bg-white/5 border border-white/10" />
+          <div className="absolute top-3 right-3 w-14 h-5 bg-white/5 border border-white/10" />
+          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-8 space-y-1.5">
+            <div className="h-4 w-40 bg-white/10" />
+            <div className="h-2.5 w-28 bg-white/5" />
+          </div>
+        </div>
+        {/* Bottom action strip skeleton */}
+        <div className="flex items-stretch divide-x divide-white/5 bg-black/30 border-t border-white/5">
+          {["Duration", "Events", "Clips"].map((label) => (
+            <div key={label} className="flex-1 flex flex-col items-center gap-1 py-3">
+              <div className="h-2 w-12 bg-white/5" />
+              <div className="h-3.5 w-8 bg-white/8" />
+            </div>
+          ))}
+          <div className="flex items-center w-11 justify-center">
+            <div className="size-4 bg-white/5" />
+          </div>
+          <div className="flex items-center w-11 justify-center">
+            <div className="size-4 bg-white/5" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── DESKTOP SKELETON ── */}
+      <div className="hidden lg:flex lg:h-18 items-stretch relative overflow-hidden">
+        <div className="flex flex-1 items-stretch">
+          {/* Thumbnail */}
+          <div className="w-30 h-full shrink-0 bg-muted/40 animate-pulse border-r border-white/10" />
+          {/* Text info */}
+          <div className="flex-1 flex flex-col justify-center px-6 py-2 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-4 bg-white/8 border border-white/10" />
+              <div className="h-4 w-48 bg-white/8" />
+            </div>
+            <div className="h-2.5 w-32 bg-white/5" />
+          </div>
+        </div>
+        {/* Stats */}
+        <div className="flex items-stretch border-l border-white/5">
+          {[1, 2].map((i) => (
+            <div key={i} className="w-20 flex items-center justify-center bg-white/1">
+              <div className="h-4 w-8 bg-white/8" />
+            </div>
+          ))}
+        </div>
+        {/* Highlights button */}
+        <div className="flex items-center justify-center w-30 border-l border-white/5">
+          <div className="h-7 w-20 bg-white/5 border border-white/10" />
+        </div>
+        {/* Action buttons */}
+        <div className="flex items-center justify-center gap-2 w-30 border-l border-white/10 bg-white/2">
+          <div className="size-8 bg-white/5 border border-white/5" />
+          <div className="size-8 bg-white/5 border border-white/5" />
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 const MiniHeatmap = ({ matches }: { matches: any }) => (
   <svg
     viewBox="0 0 100 60"
@@ -114,11 +190,26 @@ export const MatchDashboard = React.memo(function MatchDashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border/50 bg-card/30">
-        <Loader2 className="size-6 text-accent animate-spin mb-4" />
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-          INITIALIZING ANALYTICS ENGINE...
-        </span>
+      <div className="space-y-6">
+        {/* Skeleton filter tabs */}
+        <div className="flex gap-1 border-b border-border overflow-x-auto pb-px hide-scrollbar">
+          <div className="flex items-center px-3 sm:px-4 py-2 border-r border-border bg-muted/20 shrink-0">
+            <div className="size-3 sm:size-3.5 bg-muted-foreground/30 mr-1.5 sm:mr-2 animate-pulse" />
+            <div className="h-2.5 w-16 bg-muted-foreground/20 animate-pulse" />
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 shrink-0">
+              <div className="h-2.5 w-12 bg-muted-foreground/15 animate-pulse" />
+              <div className="h-3.5 w-5 bg-muted-foreground/10 animate-pulse" />
+            </div>
+          ))}
+        </div>
+        {/* Skeleton match cards */}
+        <div className="grid grid-cols-1 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <MatchCardSkeleton key={i} index={i} />
+          ))}
+        </div>
       </div>
     );
   }
