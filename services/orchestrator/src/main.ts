@@ -19,7 +19,15 @@ async function bootstrap() {
     // Basic security headers via helmet
     app.use(helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },
-      contentSecurityPolicy: false, // Disabled as this is an API, not a website
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
+          connectSrc: ["'self'", "https:", "http:"],
+        },
+      },
     }));
 
     // API versioning — all routes live under /api/v1
@@ -48,7 +56,7 @@ async function bootstrap() {
     // Global headers for Cross-Origin Isolation (COEP/CORP/COOP)
     app.use((req: any, res: any, next: any) => {
       res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-      res.setHeader('Access-Control-Allow-Origin', '*'); // Redundant but safe for static
+      // res.setHeader('Access-Control-Allow-Origin', '*'); // REMOVED: Managed by CORS middleware
       next();
     });
 

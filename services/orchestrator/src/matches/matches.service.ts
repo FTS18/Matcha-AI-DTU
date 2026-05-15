@@ -38,7 +38,9 @@ export class MatchesService {
       fileName = file.filename;
     } else if (file.buffer) {
       // Fallback for memoryStorage
-      fileName = `${Date.now()}-${file.originalname}`;
+      // Sanitize filename to prevent path traversal
+      const sanitizedName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.-]/g, '_');
+      fileName = `${Date.now()}-${sanitizedName}`;
       const uploadsDir = path.join(process.cwd(), '..', '..', 'uploads');
 
       try {
@@ -373,13 +375,15 @@ export class MatchesService {
     const uploadUrl = match.uploadUrl;
 
     // If the stored URL is a YouTube/external URL, pass it directly — no file path reconstruction
-    if (
-      uploadUrl.startsWith('http://youtube.com') ||
-      uploadUrl.startsWith('https://youtube.com') ||
-      uploadUrl.startsWith('https://youtu.be') ||
-      uploadUrl.startsWith('http://youtu.be') ||
-      uploadUrl.includes('youtube.com')
-    ) {
+    let isYoutube = false;
+    try {
+      const url = new URL(uploadUrl);
+      isYoutube = ['youtube.com', 'www.youtube.com', 'youtu.be'].includes(url.hostname);
+    } catch (e) {
+      isYoutube = false;
+    }
+
+    if (isYoutube) {
       this.logger.log(`Re-analysing YouTube match ${id}: ${uploadUrl}`);
       void this.triggerInference(id, uploadUrl);
       return { ok: true };

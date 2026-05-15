@@ -75,8 +75,7 @@ export class MatchesController {
     try {
       const parsed = new URL(url);
       if (
-        !parsed.hostname.includes('youtube.com') &&
-        !parsed.hostname.includes('youtu.be')
+        !['youtube.com', 'www.youtube.com', 'youtu.be'].includes(parsed.hostname)
       ) {
         throw new BadRequestException('Must be a YouTube URL');
       }
@@ -111,8 +110,7 @@ export class MatchesController {
     try {
       const url = new URL(body.url);
       if (
-        !url.hostname.includes('youtube.com') &&
-        !url.hostname.includes('youtu.be')
+        !['youtube.com', 'www.youtube.com', 'youtu.be'].includes(url.hostname)
       ) {
         throw new BadRequestException(
           'URL must be a YouTube link (youtube.com or youtu.be)',

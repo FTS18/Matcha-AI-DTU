@@ -10,8 +10,8 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          pr-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_message: |
             ## Welcome to Matcha AI
 
             Thank you for opening your first Pull Request here! We are thrilled to have you as part of the community.
