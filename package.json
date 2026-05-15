@@ -38,12 +38,13 @@
     "multer": "1.4.4-lts.1",
     "next": "^14.2.35",
     "postcss": "^8.5.14",
+    "qs": "^6.13.0",
     "send": "^0.19.2",
     "serve-static": "^1.16.3",
     "shelljs": "^0.8.5",
     "socket.io-parser": "^4.2.6",
     "tar": "^7.5.15",
-    "tmp": "^0.2.5",
+    "tmp": "^0.2.3",
     "tough-cookie": "^4.1.4",
     "webpack": "^5.106.2"
   }
