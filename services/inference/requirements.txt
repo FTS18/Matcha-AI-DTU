@@ -4,7 +4,7 @@ python-dotenv>=1.0.0
 ultralytics>=8.1.0
 opencv-python
 numpy<2.0.0
-torch>=2.0.0
+torch>=2.5.1+cu121
 torchaudio>=2.0.0
 torchvision>=0.15.0
 google-generativeai==0.8.3
