@@ -1,25 +1,50 @@
 {
- "name": "matcha-ai-dtu",
- "version": "0.0.0",
- "private": true,
- "workspaces": [
- "apps/web",
- "packages/*",
- "services/*"
- ],
- "scripts": {
- "build": "turbo run build",
- "dev": "turbo run dev",
- "lint": "turbo run lint",
- "format": "prettier --write \"**/*.{ts,tsx,md}\""
- },
- "devDependencies": {
- "prettier": "latest",
- "prisma": "^7.8.0",
- "turbo": "latest"
- },
- "packageManager": "npm@10.0.0",
- "dependencies": {
- "rxjs": "^7.8.2"
- }
+  "name": "matcha-ai-dtu",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "prettier": "latest",
+    "prisma": "^7.8.0",
+    "turbo": "latest"
+  },
+  "packageManager": "npm@10.9.8",
+  "dependencies": {
+    "rxjs": "^7.8.2"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "^0.9.10",
+    "body-parser": "^1.20.5",
+    "cross-spawn": "^7.0.6",
+    "ejs": "^3.1.10",
+    "express": "^4.22.2",
+    "fast-xml-parser": "^4.5.6",
+    "flatted": "^3.4.2",
+    "form-data": "^4.0.5",
+    "glob-parent": "^6.0.2",
+    "lodash": "^4.18.1",
+    "minimatch": "^3.1.5",
+    "minimist": "^1.2.8",
+    "multer": "1.4.4-lts.1",
+    "next": "^14.2.35",
+    "postcss": "^8.5.14",
+    "send": "^0.19.2",
+    "serve-static": "^1.16.3",
+    "shelljs": "^0.8.5",
+    "socket.io-parser": "^4.2.6",
+    "tar": "^7.5.15",
+    "tmp": "^0.2.5",
+    "tough-cookie": "^4.1.4",
+    "webpack": "^5.106.2"
+  }
 }
