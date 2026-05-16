@@ -61,6 +61,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repo name
+        run: |
+          echo "REPO_OWNER_LOWER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Build and Push Orchestrator
         uses: docker/build-push-action@v5
         with:
@@ -68,8 +72,8 @@ jobs:
           file: services/orchestrator/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/matcha-orchestrator:latest
-            ghcr.io/${{ github.repository_owner }}/matcha-orchestrator:${{ github.sha }}
+            ghcr.io/${{ env.REPO_OWNER_LOWER }}/matcha-orchestrator:latest
+            ghcr.io/${{ env.REPO_OWNER_LOWER }}/matcha-orchestrator:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -80,7 +84,7 @@ jobs:
           file: services/inference/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/matcha-inference:latest
-            ghcr.io/${{ github.repository_owner }}/matcha-inference:${{ github.sha }}
+            ghcr.io/${{ env.REPO_OWNER_LOWER }}/matcha-inference:latest
+            ghcr.io/${{ env.REPO_OWNER_LOWER }}/matcha-inference:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
