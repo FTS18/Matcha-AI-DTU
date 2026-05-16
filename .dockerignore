@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+*/node_modules
+**/node_modules
+
+# Build outputs
+dist
+.next
+.turbo
+out
+build
+
+# Python
+venv
+.venv
+__pycache__
+*.pyc
+
+# Env/Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Git
+.git
+.gitignore
+.github
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Documentation/IDE
+.vscode
+.agent
+docs
+*.md
