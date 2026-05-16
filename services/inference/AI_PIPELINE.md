@@ -23,7 +23,7 @@ graph TD
  end
  C --> C1
 
- subgraph "Phase 5 (app/core/visuals/generator.py)"
+ subgraph "Phase 5 (app/core/heatmap.py)"
  G1(generate_heatmap) --> G2(Player density PNG\nOpenCV pitch render)
  G3(estimate_ball_speed) --> G4(95th-pct km/h)
  G5(_cluster_teams) --> G6(Jersey colour centroids)
@@ -60,7 +60,7 @@ While Goal Detection zeroes in on scoring, Phase 2 categorises a much wider rang
 
 With the list of scored `Events` populated, Gemini generates per-event commentary and a full match summary:
 
-1. **Per-event commentary** (`generate_commentary()` in `app/core/soccer_analysis/narrative.py`): A vivid 40–60 word live-broadcast style commentary string for each event. Prompted with event type, minute, intensity, and surrounding context events.
+1. **Per-event commentary** (`generate_commentary()`): A vivid 40–60 word live-broadcast style commentary string for each event. Prompted with event type, minute, intensity, and surrounding context events.
 2. **Fallback templates** (`_FALLBACK` dict): Pre-written energy-levelled fallbacks (high/mid/low) for each event type, used when Gemini is unavailable.
 3. **Match Summary** (`generate_match_summary()`): A 3–5 sentence analytical narrative of the entire match. Capped at 5000 characters and stored on the `Match` record.
 
@@ -84,7 +84,7 @@ The highlight reel pipeline (`create_highlight_reel()`) assembles a professional
 
 4. **Concatenation**: All clips are concatenated via FFmpeg `concat` demuxer into a single `highlight_reel_matchId.mp4` saved to `/uploads/`.
 
-### Phase 5: Post-Game Analytics (NEW — `app/core/visuals/generator.py`)
+### Phase 5: Post-Game Analytics (NEW — `app/core/heatmap.py`)
 
 After the highlight reel is built, Phase 5 runs a post-processing analytics pass on the already-collected `track_frames` data. No additional video read is needed.
 
@@ -146,17 +146,8 @@ CONFIG = {
 | `GEMINI_API_KEY`   | Enables Gemini commentary + match summary. Without it, fallback templates are used.           |
 | `HF_TOKEN`         | Enables Kokoro-82M (Tier 1 TTS). Without it, the system uses anonymous tier with rate limits. |
 | `ORCHESTRATOR_URL` | Where to POST progress and completion callbacks (default: `http://localhost:4000`).           |
-| `LOG_LEVEL`        | Control verbosity. Defaults to `INFO`. Logs are automatically sanitized for security.       |
 
 ---
-
-## 🔒 Security Hardening
-
-The inference service includes several layers of protection:
-
-1.  **Log Sanitization**: All log inputs are stripped of newlines and control characters to prevent Log Injection.
-2.  **Secret Redaction**: Sensitive API keys (Roboflow, Gemini) are automatically redacted from error logs.
-3.  **Path Traversal Guard**: File operations in the Orchestrator use random UUID prefixes and strict path resolution checks to ensure files stay within the `/uploads/` directory.
 
 ## Testing the Pipeline
 
