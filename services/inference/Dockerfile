@@ -20,28 +20,28 @@ FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
-# Install only runtime system dependencies (FFmpeg, TTS) - No GUI libs needed for headless
+# Install only runtime system dependencies (FFmpeg, TTS)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN useradd -m -u 1000 matcha
+# Create non-root user and setup directories with correct permissions BEFORE copying code
+RUN useradd -m -u 1000 matcha && \
+    mkdir -p models uploads && \
+    chown -R matcha:matcha /app
 
 # Copy the installed python packages from the builder stage
 COPY --from=builder /root/.local /home/matcha/.local
+
 # Ensure the scripts from .local/bin are in the PATH
-ENV PATH=/home/matcha/.local/bin:$PATH
-# Prevent python from writing pyc files and enable unbuffered logging
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PATH=/home/matcha/.local/bin:$PATH \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Copy the application source code
-COPY --chown=matcha:matcha . .
-
-# Setup permissions for volumes
-RUN mkdir -p models uploads && chown -R matcha:matcha /app
+# Copy application code with correct ownership immediately to avoid heavy chown layers
+COPY --chown=matcha:matcha app/ app/
+COPY --chown=matcha:matcha main.py .
 
 USER matcha
 EXPOSE 8000

@@ -16,3 +16,7 @@ venv/
 .git
 .gitignore
 uploads/
+models/
+data/
+node_modules/
+.turbo/
