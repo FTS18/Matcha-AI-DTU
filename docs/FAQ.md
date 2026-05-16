@@ -133,7 +133,7 @@ Either:
 
 ### I want to contribute but I have never done open source before. Where do I start?
 
-Read `./ONBOARDING.md` before anything else. It explains forking, branching, and pull requests in plain English without assuming prior experience. Then look at `./ROADMAP.md` and find a task labeled `[Beginner]` that interests you.
+Read `ONBOARDING.md` before anything else. It explains forking, branching, and pull requests in plain English without assuming prior experience. Then look at `ROADMAP.md` and find a task labeled `[Beginner]` that interests you.
 
 ---
 

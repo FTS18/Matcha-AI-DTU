@@ -12,7 +12,7 @@ If you are a contributor looking for something to work on:
 2. Check the Issues tab to see if a corresponding issue already exists.
 3. If no issue exists, open one and reference this roadmap item.
 4. Comment on the issue to express your interest before starting work.
-5. Follow the contribution workflow in `./CONTRIBUTING.md`.
+5. Follow the contribution workflow in `CONTRIBUTING.md`.
 
 Complexity labels used throughout this document:
 

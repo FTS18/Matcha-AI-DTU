@@ -6,9 +6,9 @@ Thank you for considering a contribution to Matcha-AI-DTU. This project is a com
 
 ## New to Open Source? Start Here
 
-If you have never contributed to an open-source project before, read `./ONBOARDING.md` before this file. It explains forking, branching, committing, and pull requests in plain English without assuming any prior experience.
+If you have never contributed to an open-source project before, read `ONBOARDING.md` before this file. It explains forking, branching, committing, and pull requests in plain English without assuming any prior experience.
 
-Not familiar with a term in this file? Check `./ARCHITECTURE.md#terminology--concepts` for plain-English definitions of every technical term used in this project.
+Not familiar with a term in this file? Check `ARCHITECTURE.md#terminology--concepts` for plain-English definitions of every technical term used in this project.
 
 ---
 
@@ -23,13 +23,13 @@ The following are specific, well-scoped tasks that are appropriate for contribut
 | Display the match duration on each match card | Frontend (Next.js) | Date formatting, NestJS API response |
 | Add a "No highlights detected" empty state to the Highlights tab | Frontend (Next.js) | Conditional rendering, UI components |
 | Add a character counter to the match title input field | Frontend (Next.js) | Controlled inputs, inline validation |
-| Add a Windows-specific note to the venv activation step in ./SETUP.md | Documentation | Markdown, Windows path syntax |
+| Add a Windows-specific note to the venv activation step in `SETUP.md` | Documentation | Markdown, Windows path syntax |
 | Expand the FAQ with answers to the top 5 Docker setup questions | Documentation | Technical writing, Docker basics |
 | Add a `FAQ.md` entry for the "analysis stuck at 0%" error | Documentation | Markdown, understanding the callback flow |
 | Add inline JSDoc comments to the `MatchesService` methods | Backend (NestJS) | TypeScript, NestJS service pattern |
 | Add input length validation for the match title field in the NestJS controller | Backend (NestJS) | NestJS validation pipes, class-validator |
 
-If none of these appeal to you, browse `./ROADMAP.md` for all planned features tagged `[Beginner]`.
+If none of these appeal to you, browse `ROADMAP.md` for all planned features tagged `[Beginner]`.
 
 ---
 
@@ -38,8 +38,8 @@ If none of these appeal to you, browse `./ROADMAP.md` for all planned features t
 If you are looking for a place to contribute:
 
 1. Check the **Issues** tab on GitHub and filter by `good first issue` or `help wanted`.
-2. Browse `./ROADMAP.md` for planned features. All items are labeled by difficulty.
-3. Read `./ARCHITECTURE.md` to understand the overarching data flow before jumping in.
+2. Browse `ROADMAP.md` for planned features. All items are labeled by difficulty.
+3. Read `ARCHITECTURE.md` to understand the overarching data flow before jumping in.
 4. Read `../services/inference/AI_PIPELINE.md` if you are working on the Python inference pipeline.
 
 ## 2. Fork & Clone

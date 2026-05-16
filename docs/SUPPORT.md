@@ -10,10 +10,10 @@ If you have questions or need assistance, please follow these steps in order:
 
 Most setup and usage questions are already answered in our core documentation:
 
-- [README.md](./README.md) - Project overview and quick start.
+- **General Overview**: Read the [README.md](../README.md) for a summary of the project.
 - [SETUP.md](./SETUP.md) - Detailed step-by-step installation.
 - [ARCHITECTURE.md#terminology--concepts](./ARCHITECTURE.md#terminology--concepts) - Definitions for project-specific jargon.
-- [CONTRIBUTING.md](./docs/CONTRIBUTING.md) - How to submit code and follow standards.
+- **Contributing**: Check [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ### 2. Search GitHub Discussions
 
