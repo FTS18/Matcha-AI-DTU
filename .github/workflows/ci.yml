@@ -39,10 +39,8 @@ jobs:
         run: npm run lint
 
       - name: Documentation Link Check
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
-        with:
-          use-quiet-mode: 'yes'
-          config-file: '.github/linters/mlc_config.json'
+        run: |
+          find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/.next/*" -not -path "*/.turbo/*" -not -path "*/dist/*" | xargs -n 1 npx markdown-link-check -q -c .github/linters/mlc_config.json
 
   registry:
     name: Container Registry
