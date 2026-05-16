@@ -36,13 +36,16 @@ COPY --from=builder /app/services/orchestrator/dist ./services/orchestrator/dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/services/orchestrator/package.json ./services/orchestrator/package.json
+COPY services/orchestrator/docker-entrypoint.sh /usr/local/bin/
 
-# Fix permissions for uploads and non-root user
-RUN mkdir -p uploads && chown -R node:node /app
+# Fix permissions for uploads, entrypoint, and non-root user
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    mkdir -p uploads && chown -R node:node /app
 
 USER node
 WORKDIR /app/services/orchestrator
 EXPOSE 4000
 
-# Use node directly for better signal handling
+ENTRYPOINT ["docker-entrypoint.sh"]
+# Use node directly for better signal handling (passed as args to entrypoint)
 CMD ["node", "dist/main.js"]
