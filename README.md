@@ -64,7 +64,7 @@ graph TD
    - **[`@matcha/shared`](packages/shared)**: Universal API client, WebSocket registries, and logical utilities.
    - **[`@matcha/database`](packages/database)**: Shared Prisma schema and generated client.
    - **[`@matcha/contracts`](packages/contracts)**: Centralized Zod validation schemas for all API payloads.
-   - **[`@matcha/env`](packages/env/)**: Strict, boot-time environment variable validation via T3-Env.
+   - **[`@matcha/env`](packages/env/README.md)**: Strict, boot-time environment variable validation via T3-Env.
 5. **[Inference Engine (services/inference)](services/inference/README.md)**: Python FastAPI AI pipeline (YOLO, SoccerNet, Gemini).
 
 ---
