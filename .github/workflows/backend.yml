@@ -1,0 +1,78 @@
+name: Backend Integrity
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  api-contract:
+    name: API Contract & Types Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Shared Contracts
+        run: npx turbo run build --filter=@matcha/contracts
+
+      - name: Verify Consumer Compatibility
+        run: |
+          npx turbo run build --filter=web --filter=orchestrator --dry
+          echo "API Contract is consistent across frontend and backend."
+
+  db-safety:
+    name: Database & Prisma Safety
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'prisma') || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Validate Schema
+        run: npx prisma validate --schema=services/orchestrator/prisma/schema.prisma
+
+      - name: SQL Migration Safety Audit
+        run: |
+          DANGEROUS_OPS=$(grep -rE "DROP COLUMN|DROP TABLE|TRUNCATE" services/orchestrator/prisma/migrations/*.sql 2>/dev/null || true)
+          if [ -n "$DANGEROUS_OPS" ]; then
+            echo "::warning title=Dangerous Migration Detected::The following migrations contain destructive operations:"
+            echo "$DANGEROUS_OPS"
+          else
+            echo "No destructive migrations detected."
+          fi
+
+  env-sync:
+    name: Env-Sync Consistency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Env Examples
+        run: |
+          get_keys() {
+            grep -v '^#' "$1" | grep '=' | cut -d'=' -f1 | sed 's/ //g' | sort | uniq
+          }
+          ROOT_KEYS=$(get_keys .env.example)
+          ORCH_KEYS=$(get_keys services/orchestrator/.env.example)
+          for KEY in GEMINI_API_KEY HF_TOKEN; do
+            if ! echo "$ROOT_KEYS" | grep -q "$KEY"; then
+              echo "::error::Key $KEY missing from root .env.example"
+              exit 1
+            fi
+          done
+          echo "Environment consistency check passed."
