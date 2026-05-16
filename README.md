@@ -9,6 +9,7 @@
 [![GitHub Contributors](https://img.shields.io/github/contributors/FTs18/Matcha-AI-DTU)](https://github.com/FTs18/Matcha-AI-DTU/graphs/contributors)
 [![GitHub License](https://img.shields.io/github/license/FTs18/Matcha-AI-DTU)](LICENSE)
 [![CI Build Status](https://github.com/FTs18/Matcha-AI-DTU/actions/workflows/ci.yml/badge.svg)](https://github.com/FTs18/Matcha-AI-DTU/actions/workflows/ci.yml)
+[![Container Registry](https://img.shields.io/badge/Registry-GHCR-blue)](https://github.com/FTS18/Matcha-AI-DTU/packages)
 
 Matcha-AI-DTU is a comprehensive AI-powered sports video analysis platform. It processes sports footage (specifically soccer/football), tracks the ball and players, automatically detects goals and events using SoccerNet + custom vision models, generates insightful commentary using Google Gemini LLMs, synthesizes high-quality audio voiceovers using a 3-tier neural TTS pipeline (Kokoro-82M → edge-tts → silence), and builds a complete analytics suite including player heatmaps, ball speed estimation, and team colour detection.
 
@@ -91,9 +92,36 @@ graph TD
 
 ---
 
-## Quick Start Guide
+## 🚀 Quick Start (The Matcha CLI)
 
-> For a full step-by-step beginner walkthrough, see [SETUP.md](docs/SETUP.md).
+The easiest way to develop is using our built-in **Matcha CLI (Makefile)**.
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/FTs18/Matcha-AI-DTU.git && cd Matcha-AI-DTU
+
+# 2. Setup your .env files (see Step 4 below)
+
+# 3. Start Infrastructure (Postgres, Redis, MinIO)
+make up
+
+# 4. Install & Start Development (Frontend + API + AI Engine)
+make dev
+```
+
+> **Pro Tip**: Run `make help` to see all available shortcuts!
+
+---
+
+## 📦 One-Click Development (Dev Containers)
+
+This project supports **VS Code Dev Containers**. 
+
+1. Open this project in VS Code.
+2. Click **"Reopen in Container"** when prompted.
+3. Everything (Node, Python, Docker, PostgreSQL) is pre-installed and configured for you.
+
+---
 
 ### Prerequisites
 
@@ -327,6 +355,8 @@ For details on our security posture, known vulnerabilities, and why certain majo
 | [services/inference/AI_PIPELINE.md](services/inference/AI_PIPELINE.md) | Deep-dive into all 5 pipeline phases: YOLO, SoccerNet, Gemini, TTS, and analytics |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | Onboarding guide for new developers |
 | [docs/ALGORITHMS.md](docs/ALGORITHMS.md) | Detailed AI logic and mathematical foundations |
+| **API Docs (Swagger)** | `http://localhost:4000/api/docs` (Orchestrator) |
+| **AI API Docs** | `http://localhost:8000/docs` (Inference Engine) |
 
 ---
 

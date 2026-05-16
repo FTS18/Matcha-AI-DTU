@@ -7,15 +7,11 @@
 ## 📖 Table of Contents
 
 1. [What is this project?](#what-is-this-project)
-2. [System Requirements & Prerequisites](#-system-requirements--prerequisites)
-3. [Step 1: Clone the Repository](#-step-1-clone-the-repository)
-4. [Step 2: Start the Infrastructure (Docker)](#-step-2-start-the-infrastructure-docker)
-5. [Step 3: Set Up Node.js & Install Dependencies](#-step-3-set-up-nodejs--install-dependencies)
-6. [Step 4: Set Up the Python AI Inference Service](#-step-4-set-up-the-python-ai-inference-service)
-7. [Step 5: Configure Environment Variables](#-step-5-configure-environment-variables)
-8. [Step 6: Run the Full Stack](#-step-6-run-the-full-stack)
-9. [Step 7: Verify Everything is Working](#-step-7-verify-everything-is-working)
-10. [Troubleshooting Common Errors](#-troubleshooting-common-errors)
+2. [⚡ Super-Fast Setup (Makefile)](#-super-fast-setup-makefile)
+3. [📦 One-Click Setup (Dev Containers)](#-one-click-setup-dev-containers)
+4. [System Requirements & Prerequisites](#-system-requirements--prerequisites)
+5. [Step 1: Clone the Repository](#-step-1-clone-the-repository)
+...
 
 ---
 
@@ -32,6 +28,34 @@ Matcha AI is a **monorepo** — a single Git repository that contains multiple s
 | **Cache**            | Redis (Docker)      | Fast in-memory store for tracking active analysis jobs.     |
 
 All of them need to be running simultaneously for the app to work correctly.
+
+---
+
+## ⚡ Super-Fast Setup (Makefile)
+
+If you are on macOS or Linux, you can skip the manual steps by using our **Matcha CLI**.
+
+1. **Clone & Setup Env**:
+   ```bash
+   git clone https://github.com/FTs18/Matcha-AI-DTU.git && cd Matcha-AI-DTU
+   # Fill in services/orchestrator/.env (see Step 5)
+   ```
+
+2. **Boot Everything**:
+   ```bash
+   make up   # Start DB/Redis
+   make dev  # Start Frontend/API/AI Engine
+   ```
+
+---
+
+## 📦 One-Click Setup (Dev Containers)
+
+If you have **VS Code** and **Docker Desktop**:
+1. Open this project in VS Code.
+2. When the popup appears in the bottom-right, click **"Reopen in Container"**.
+3. **Wait**: It will build a Linux environment with all Node, Python, and DB tools pre-installed.
+4. **Done**: You can start coding immediately.
 
 ---
 
