@@ -321,14 +321,19 @@ Matcha-AI-DTU/
 │   ├── web/                # Next.js 15 Web App
 │   └── mobile/             # Expo (React Native) Mobile App
 ├── packages/
-│   └── shared/             # @matcha/shared — Types, Client, Utils
+│   ├── contracts/          # Zod validation schemas (Universal)
+│   ├── database/           # Prisma schema & Client (Shared)
+│   ├── env/                # T3-Env validation (Safe env access)
+│   ├── shared/             # API clients & logical utilities
+│   ├── theme/              # Tailwind & Design tokens
+│   └── ui/                 # React component library
 ├── services/
 │   ├── orchestrator/       # NestJS API (Port 4000)
 │   │   └── prisma/         # Database schema & migrations
 │   └── inference/          # Python FastAPI AI Pipeline (Port 8000)
 │       ├── app/core/       # Pipeline modules (analysis, heatmap, goal detection)
 │       └── AI_PIPELINE.md  # Detailed 5-phase pipeline documentation
-├── uploads/                # Global video/audio/heatmap assets (shared)
+├── uploads/                # Global assets (raw/, processed/, analytics/, audio/)
 ├── docs/
 │   ├── ARCHITECTURE.md     # Full system architecture
 │   ├── API.md              # HTTP & WebSocket API contracts
