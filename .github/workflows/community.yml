@@ -49,14 +49,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wiki Documentation Sync
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          WIKI_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
-          git clone "$WIKI_URL" wiki_repo
-          cp -R docs/* wiki_repo/
-          cd wiki_repo
-          git add .
-          if ! git diff --staged --quiet; then git commit -m "docs: sync [skip ci]"; git push origin $(git branch --show-current); fi
