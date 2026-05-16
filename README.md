@@ -130,6 +130,8 @@ This project supports **VS Code Dev Containers**.
 | **Node.js**           | 18+               | https://nodejs.org (choose LTS)                 |
 | **Python**            | 3.9+              | https://www.python.org/downloads/               |
 | **Docker Desktop**    | Latest            | https://www.docker.com/products/docker-desktop/ |
+| **Git**               | Latest            | https://git-scm.com/downloads                 |
+| **Make**              | Latest            | See [SETUP.md](docs/SETUP.md)                   |
 | **FFmpeg**            | Latest            | https://ffmpeg.org/download.html                |
 | **NVIDIA GPU + CUDA** | 12.4 _(optional)_ | Boosts YOLO inference speed                     |
 

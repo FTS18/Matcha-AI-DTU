@@ -63,6 +63,16 @@ If you have **VS Code** and **Docker Desktop**:
 
 Before you start, install these tools on your machine. Check if you already have them by running the commands shown.
 
+| Tool                  | Minimum Version   | Install Link                                    |
+| --------------------- | ----------------- | ----------------------------------------------- |
+| **Node.js**           | 18+               | https://nodejs.org (choose LTS)                 |
+| **Python**            | 3.9+              | https://www.python.org/downloads/               |
+| **Docker Desktop**    | Latest            | https://www.docker.com/products/docker-desktop/ |
+| **Git**               | Latest            | https://git-scm.com/downloads                 |
+| **Make**              | Latest            | See step 6 below                                |
+| **FFmpeg**            | Latest            | https://ffmpeg.org/download.html                |
+| **NVIDIA GPU + CUDA** | 12.4 _(optional)_ | Boosts YOLO inference speed                     |
+
 ### 1. Node.js (v18 or higher)
 
 Node.js is the JavaScript runtime that powers the frontend and the backend (Orchestrator).
@@ -139,6 +149,16 @@ git --version
 ```
 
 If not installed: https://git-scm.com/downloads
+
+---
+
+### 6. Make (Optional but Recommended)
+
+`Make` is required to use the **Matcha CLI** (`make dev`, `make up`, etc.). 
+
+- **macOS**: Already installed (or run `xcode-select --install`).
+- **Linux**: `sudo apt install make`.
+- **Windows**: Install via [Chocolatey](https://chocolatey.org/) (`choco install make`) or [Scoop](https://scoop.sh/) (`scoop install make`).
 
 ---
 
