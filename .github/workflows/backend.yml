@@ -45,11 +45,11 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Validate Schema
-        run: npx prisma validate --schema=services/orchestrator/prisma/schema.prisma
+        run: npx prisma validate --schema=packages/database/prisma/schema.prisma
 
       - name: SQL Migration Safety Audit
         run: |
-          DANGEROUS_OPS=$(grep -rE "DROP COLUMN|DROP TABLE|TRUNCATE" services/orchestrator/prisma/migrations/*.sql 2>/dev/null || true)
+          DANGEROUS_OPS=$(grep -rE "DROP COLUMN|DROP TABLE|TRUNCATE" packages/database/prisma/migrations/*.sql 2>/dev/null || true)
           if [ -n "$DANGEROUS_OPS" ]; then
             echo "::warning title=Dangerous Migration Detected::The following migrations contain destructive operations:"
             echo "$DANGEROUS_OPS"
