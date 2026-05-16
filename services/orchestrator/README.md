@@ -23,7 +23,7 @@ The Orchestrator acts as the central hub of the Matcha-AI-DTU monorepo. Built ag
 ### 1. Unified Setup
 
 It is highly recommended to manage the Orchestrator via the root monorepo commands.
-Please refer to the **[Root SETUP.md](../../SETUP.md)** for detailed infrastructure and environment variable instructions.
+Please refer to the **[Root SETUP.md](../../docs/SETUP.md)** for detailed infrastructure and environment variable instructions.
 
 ### 2. Manual Commands
 
