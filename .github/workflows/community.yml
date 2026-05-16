@@ -1,4 +1,4 @@
-name: Community & Repository Ops
+name: Community Support
 
 on:
   push:
@@ -10,94 +10,53 @@ on:
   workflow_dispatch:
 
 jobs:
-  greetings-and-assignment:
-    name: New Contributor & PR Assignment
+  community:
+    name: Matcha AI Community Support
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target'
     permissions:
+      contents: write
       pull-requests: write
+      issues: write
     steps:
-      - name: Welcome Message
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Pull Request Support ---
+      - name: Welcome New Contributors
+        if: github.event_name == 'pull_request_target'
         uses: actions/first-interaction@v3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_message: |
-            ## Welcome to Matcha AI
-            Thank you for opening your first Pull Request! We are thrilled to have you here.
-            Please ensure you've read our [Contribution Guidelines](./docs/CONTRIBUTING.md).
+          pr_message: "## Welcome to Matcha AI! Thanks for your contribution."
 
-      - name: Auto-assign PR creator
-        uses: actions/github-script@v9
-        with:
-          script: |
-            github.rest.issues.addAssignees({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              assignees: [context.payload.pull_request.user.login]
-            })
-
-  labeler:
-    name: Pull Request Labeler
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target'
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Label PR based on paths
+      - name: PR Labeler
+        if: github.event_name == 'pull_request_target'
         uses: actions/labeler@v5
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           configuration-path: .github/labeler.yml
-          sync-labels: true
 
-  stale:
-    name: Manage Stale Issues
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    permissions:
-      issues: write
-      pull-requests: write
-    steps:
-      - uses: actions/stale@v10
+      # --- Repository Maintenance ---
+      - name: Stale Issue Manager
+        if: github.event_name == 'schedule'
+        uses: actions/stale@v10
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          days-before-stale: 14
-          days-before-pr-stale: 7
-          days-before-close: 7
 
-  release-drafter:
-    name: Update Release Draft
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-      pull-requests: read
-    steps:
-      - uses: release-drafter/release-drafter@v7
+      - name: Release Drafter
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: release-drafter/release-drafter@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  wiki-sync:
-    name: Wiki Documentation Sync
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Sync to GitHub Wiki
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Wiki Documentation Sync
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          WIKI_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git"
+          WIKI_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
           git clone "$WIKI_URL" wiki_repo
           cp -R docs/* wiki_repo/
-          if [ ! -f "wiki_repo/Home.md" ]; then cp README.md wiki_repo/Home.md; fi
           cd wiki_repo
           git add .
-          if git diff --staged --quiet; then echo "No changes to sync."; else git commit -m "docs: automatic sync [skip ci]"; git push origin $(git branch --show-current); fi
+          if ! git diff --staged --quiet; then git commit -m "docs: sync [skip ci]"; git push origin $(git branch --show-current); fi

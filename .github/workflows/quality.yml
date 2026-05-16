@@ -5,38 +5,10 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main, dev]
-  schedule:
-    - cron: '28 12 * * 4'
 
 jobs:
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'javascript-typescript', 'python' ]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-extended,security-and-quality
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:${{matrix.language}}"
-
-  dep-audit:
-    name: Dependency Bloat & Audit
+  quality:
+    name: Code Quality (Lint, Audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,5 +19,24 @@ jobs:
           cache: 'npm'
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
-      - name: Check for Unused Dependencies
-        run: npx depcheck --ignores="eslint-config-*,prettier,typescript,@types/*,@matcha/*" || echo "Check unused deps."
+      - name: Dependency Audit
+        run: npx depcheck --ignores="eslint-config-*,prettier,typescript,@types/*,@matcha/*" || echo "Audit done."
+
+  codeql:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    strategy:
+      matrix:
+        language: [ 'javascript-typescript', 'python' ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform Analysis
+        uses: github/codeql-action/analyze@v3

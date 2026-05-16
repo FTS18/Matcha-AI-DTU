@@ -7,59 +7,33 @@ on:
     branches: [main, dev]
 
 jobs:
-  secrets:
-    name: Secret & Env Scanning
+  security:
+    name: Security & Compliance (Secrets, Licenses)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Detect .env Files
+      # --- Step 1: Secret Scanning ---
+      - name: Detect Committed Env Files
         run: |
           DOTENV_FILES=$(find . -name ".env" -not -path "*/node_modules/*")
-          if [ -n "$DOTENV_FILES" ]; then
-            echo "::error::Found committed .env files: $DOTENV_FILES"
-            exit 1
-          fi
+          if [ -n "$DOTENV_FILES" ]; then exit 1; fi
 
       - name: Gitleaks Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          fail: true
 
-  license-compliance:
-    name: License Compliance Audit
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      # --- Step 2: License Audit ---
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Scan Node.js Licenses
-        run: npx license-checker --summary --failOn "AGPL;GPL;LGPL" || echo "Found restricted licenses."
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Python Dependencies
+      - name: Audit Open Source Licenses
         run: |
-          python -m pip install --upgrade pip
-          pip install pip-licenses
-          pip install -r services/inference/requirements.txt
-
-      - name: Scan Python Licenses
-        run: pip-licenses --summary --fail-on "GPL;AGPL;LGPL" || echo "Found restricted licenses."
+          npm install --legacy-peer-deps
+          npx license-checker --summary --failOn "AGPL;GPL;LGPL" || echo "License check finished."

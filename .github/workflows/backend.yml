@@ -7,8 +7,8 @@ on:
     branches: [main, dev]
 
 jobs:
-  api-contract:
-    name: API Contract & Types Consistency
+  integrity:
+    name: Backend Integrity (API, DB, Env)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,58 +21,32 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Shared Contracts
-        run: npx turbo run build --filter=@matcha/contracts
-
-      - name: Verify Consumer Compatibility
+      # --- Step 1: API Contract Check ---
+      - name: Verify API Consumer Compatibility
         run: |
+          npx turbo run build --filter=@matcha/contracts
           npx turbo run build --filter=web --filter=orchestrator --dry
-          echo "API Contract is consistent across frontend and backend."
+          echo "API Contract is consistent."
 
-  db-safety:
-    name: Database & Prisma Safety
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'prisma') || github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Validate Schema
+      # --- Step 2: Prisma & DB Check ---
+      - name: Validate Prisma Schema
         run: npx prisma validate --schema=packages/database/prisma/schema.prisma
 
       - name: SQL Migration Safety Audit
         run: |
           DANGEROUS_OPS=$(grep -rE "DROP COLUMN|DROP TABLE|TRUNCATE" packages/database/prisma/migrations/*.sql 2>/dev/null || true)
           if [ -n "$DANGEROUS_OPS" ]; then
-            echo "::warning title=Dangerous Migration Detected::The following migrations contain destructive operations:"
-            echo "$DANGEROUS_OPS"
-          else
-            echo "No destructive migrations detected."
+            echo "::warning title=Dangerous Migration Detected::Destructive operations found."
           fi
 
-  env-sync:
-    name: Env-Sync Consistency Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify Env Examples
+      # --- Step 3: Env Sync Check ---
+      - name: Verify Env Example Consistency
         run: |
-          get_keys() {
-            grep -v '^#' "$1" | grep '=' | cut -d'=' -f1 | sed 's/ //g' | sort | uniq
-          }
+          get_keys() { grep -v '^#' "$1" | grep '=' | cut -d'=' -f1 | sed 's/ //g' | sort | uniq; }
           ROOT_KEYS=$(get_keys .env.example)
-          ORCH_KEYS=$(get_keys services/orchestrator/.env.example)
           for KEY in GEMINI_API_KEY HF_TOKEN; do
             if ! echo "$ROOT_KEYS" | grep -q "$KEY"; then
               echo "::error::Key $KEY missing from root .env.example"
               exit 1
             fi
           done
-          echo "Environment consistency check passed."
