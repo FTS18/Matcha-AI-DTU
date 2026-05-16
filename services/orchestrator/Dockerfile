@@ -1,56 +1,26 @@
 # Stage 1: Pruner - Minimize the context for the build
-
 FROM node:22-bookworm-slim AS pruner
-
 WORKDIR /app
-
 RUN npm install -g turbo
-
 COPY . .
-
 RUN turbo prune orchestrator --docker
 
-
-
 # Stage 2: Builder - Install dependencies and build
-
 FROM node:22-bookworm-slim AS builder
-
 RUN apt-get update && apt-get install -y openssl
-
 WORKDIR /app
 
-
-
 # First copy the pruned package.json and lockfile to cache dependencies
-
 COPY --from=pruner /app/out/json/ .
-
 COPY --from=pruner /app/out/package-lock.json ./
-
 RUN npm ci
 
-
-
 # Copy the full source code (only for pruned packages)
-
 COPY --from=pruner /app/out/full/ .
 
-
-
 # Generate Prisma client and build
-
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
-
 RUN npm run build --filter=orchestrator
-
-
-
-# Prune dev dependencies to reduce image size for the next stage
-
-RUN npm prune --omit=dev
-
-
 
 # Stage 3: Runner - Optimized production image
 FROM node:22-bookworm-slim AS runner
