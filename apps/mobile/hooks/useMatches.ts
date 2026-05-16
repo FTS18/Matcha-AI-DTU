@@ -1,4 +1,4 @@
-import type { MatchSummary, ProgressMap } from "@matcha/shared";
+// No shared types needed currently in this hook
 export function useMatches() {
   return {
     matches: [],
