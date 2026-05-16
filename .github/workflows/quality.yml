@@ -1,4 +1,4 @@
-name: Code Quality & Analytics
+name: Code Quality
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   quality:
-    name: Code Quality (Lint, Audit)
+    name: Lints and Audits
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

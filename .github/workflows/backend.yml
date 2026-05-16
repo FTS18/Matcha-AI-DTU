@@ -1,4 +1,4 @@
-name: Backend Integrity
+name: API & Database
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   integrity:
-    name: Backend Integrity (API, DB, Env)
+    name: Integrity Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -11,7 +11,7 @@ on:
 
 jobs:
   community:
-    name: Matcha AI Community Support
+    name: Matcha AI Support
     runs-on: ubuntu-latest
     permissions:
       contents: write

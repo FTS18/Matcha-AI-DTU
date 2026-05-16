@@ -1,4 +1,4 @@
-name: Matcha AI CI
+name: CI, BUILD, DOCS
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   core:
-    name: Matcha AI Core (Build, Lint, Docs)
+    name: Core Engine
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

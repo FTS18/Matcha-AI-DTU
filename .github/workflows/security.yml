@@ -1,4 +1,4 @@
-name: Security & Compliance
+name: Security, Compliance & Licenses
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   security:
-    name: Security & Compliance (Secrets, Licenses)
+    name: Guardian
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
