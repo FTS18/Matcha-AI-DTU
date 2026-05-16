@@ -52,6 +52,8 @@ services:
       context: .
       dockerfile: services/orchestrator/Dockerfile
     container_name: matcha_orchestrator
+    restart: unless-stopped
+    init: true
     environment:
       - DATABASE_URL=postgresql://matcha_user:matcha_password@postgres:5432/matcha_db?schema=public
       - INFERENCE_URL=http://inference:8000
@@ -59,6 +61,11 @@ services:
       - JWT_SECRET=${JWT_SECRET:-super_secret_matcha_key}
     ports:
       - "4000:4000"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,11 +79,18 @@ services:
       context: services/inference
       dockerfile: Dockerfile
     container_name: matcha_inference
+    restart: unless-stopped
+    init: true
     environment:
       - ORCHESTRATOR_URL=http://orchestrator:4000
       - REDIS_URL=redis://redis:6379
     ports:
       - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
     depends_on:
       redis:
         condition: service_healthy
