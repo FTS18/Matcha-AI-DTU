@@ -82,7 +82,8 @@
     "typescript-eslint": "^8.59.3"
   },
   "prisma": {
-    "schema": "../../packages/database/prisma/schema.prisma"
+    "schema": "../../packages/database/prisma/schema.prisma",
+    "seed": "ts-node ../../packages/database/prisma/seed.ts"
   },
   "overrides": {
     "ajv": "^8.20.0",

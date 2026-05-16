@@ -53,6 +53,22 @@ export default function RegisterPage() {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const response = await api.login({ 
+        email: "demo@matcha.ai", 
+        password: "password123" 
+      });
+      login(response.access_token, response.user);
+    } catch (err: any) {
+      setError("Demo login currently unavailable. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex items-center justify-center p-4 bg-background relative overflow-hidden">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] -z-10" />
@@ -115,14 +131,25 @@ export default function RegisterPage() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-2 bg-primary text-[#07080F] font-semibold text-sm uppercase tracking-wider py-3.5 flex items-center justify-center gap-2 transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign Up"}
-            {!loading && <ArrowRight className="w-4 h-4" />}
-          </button>
+          <div className="space-y-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-[#07080F] font-semibold text-sm uppercase tracking-wider py-3.5 flex items-center justify-center gap-2 transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign Up"}
+              {!loading && <ArrowRight className="w-4 h-4" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={loading}
+              className="w-full bg-secondary/10 border border-secondary/30 text-secondary font-semibold text-xs uppercase tracking-widest py-3 flex items-center justify-center gap-2 transition-all hover:bg-secondary/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Login as Guest (Demo)
+            </button>
+          </div>
         </form>
 
         <div className="mt-6 text-center text-xs text-muted-foreground">

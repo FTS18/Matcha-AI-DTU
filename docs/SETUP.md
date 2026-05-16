@@ -26,6 +26,7 @@ Matcha AI is a **monorepo** — a single Git repository that contains multiple s
 | **Inference Engine** | FastAPI (Python)    | The AI brain — runs YOLO, Gemini, and generates highlights. |
 | **Database**         | PostgreSQL (Docker) | Stores users, matches, and events persistently.             |
 | **Cache**            | Redis (Docker)      | Fast in-memory store for tracking active analysis jobs.     |
+| **Storage**          | MinIO (Docker)      | S3-compatible local object storage for media assets.        |
 
 All of them need to be running simultaneously for the app to work correctly.
 
@@ -41,7 +42,13 @@ If you are on macOS or Linux, you can skip the manual steps by using our **Match
    # Fill in services/orchestrator/.env (see Step 5)
    ```
 
-2. **Boot Everything**:
+2. **Initialize Database & Demo Data**
+    ```bash
+    make db-migrate
+    make seed
+    ```
+
+3. **Boot Everything**:
    ```bash
    make up   # Start DB/Redis
    make dev  # Start Frontend/API/AI Engine
@@ -180,7 +187,7 @@ cd Matcha-AI-DTU
 
 ## Step 2: Start the Infrastructure (Docker)
 
-The project needs a running PostgreSQL database and a Redis cache. Docker Compose starts both with a single command.
+The project needs a running PostgreSQL database, a Redis cache, and MinIO object storage. Docker Compose starts all three with a single command.
 
 ```bash
 # Start all infrastructure services in the background (-d = "detached" mode)
@@ -200,7 +207,7 @@ docker-compose up -d --build
 docker ps
 ```
 
-You should see two containers running: `matcha_postgres` and `matcha_redis`. Both should show `Up` in the `STATUS` column.
+You should see three containers running: `matcha_postgres`, `matcha_redis`, and `matcha_minio`. All should show `Up` in the `STATUS` column.
 
 > **Troubleshooting**: If Docker says "Cannot connect to the Docker daemon", Docker Desktop is not running. Open the Docker Desktop app first.
 
@@ -250,25 +257,16 @@ npx turbo run build
 
 > **Common error**: If you see `Cannot find module '@t3-oss/env-core'` during build, it means the `@matcha/env` package's dependencies weren't properly resolved. Run `npm install` again from the root and then retry `npx turbo run build`.
 
-### 3.4 — Run Database migrations
+### 3.4 — Run Database migrations & Seeding
 
-The Orchestrator uses **Prisma ORM** to manage the database schema. You need to apply the schema to your PostgreSQL database once:
-
-```bash
-cd services/orchestrator
-npx prisma migrate deploy
-cd ../..
-```
-
-If you're setting up for the first time and the database is fresh, you might need:
+The Orchestrator uses **Prisma ORM** to manage the database schema and seed data.
 
 ```bash
 cd services/orchestrator
 npx prisma migrate dev
+npx prisma db seed
 cd ../..
 ```
-
-> **What's the difference?** `migrate dev` creates the migration file AND applies it (for development). `migrate deploy` only applies existing migration files (for production or CI). Use `migrate dev` on a fresh local setup.
 
 ---
 
@@ -411,6 +409,8 @@ HF_TOKEN="hf_your_huggingface_token_here"
 
 ---
 
+---
+
 ## Step 6: Run the Full Stack
 
 Now that all dependencies and environment variables are set up, you can launch everything.
@@ -432,171 +432,54 @@ This starts all three services at once:
 - **Orchestrator API** at `http://localhost:4000/api/v1`
 - **Python Inference Engine** at `http://localhost:8000`
 
-This works because `services/inference/package.json` now has a `dev` script that calls `./venv/bin/python -m uvicorn ...` directly via the venv path — **no manual shell activation needed**.
-
-You'll see the Inference engine download YOLO model weights on the first run (~22 MB for `yolov8s-pose.pt` and ~6 MB for `yolov8n.pt`) — this is normal and only happens once.
-
-> **Windows users**: The `dev` script uses `./venv/bin/python` (macOS/Linux path). On Windows, either run the inference manually in a separate terminal or use `npm run dev:win` from inside the `services/inference` folder.
-
 ### Option B: Manual Per-Service Startup
 
 If you need to debug a specific service, open 3 separate terminals:
 
 **Terminal 1 — Frontend only:**
-
 ```bash
 cd apps/web
 npm run dev
 ```
 
 **Terminal 2 — Orchestrator only:**
-
 ```bash
 cd services/orchestrator
 npm run dev
 ```
 
-**Terminal 3 — Inference Engine (macOS/Linux):**
-
+**Terminal 3 — Inference Engine:**
 ```bash
 cd services/inference
-./venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Terminal 3 — Inference Engine (Windows):**
-
-```powershell
-cd services/inference
-.\venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Activate venv first, then:
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ---
 
 ## Step 7: Verify Everything is Working
 
-Once all services are running, confirm they're healthy:
+1. **Check the Orchestrator**: `curl http://localhost:4000/api/v1/health`
+2. **Check the Frontend**: Open `http://localhost:3000` in your browser.
+3. **Check Demo Data**: If you ran `make seed`, you should already see matches in your dashboard!
 
-### Check the Orchestrator
+---
 
-```bash
-curl http://localhost:4000/api/v1/health
-```
+## CI/CD and Security
 
-Expected response:
-
-```json
-{
-  "status": "ok",
-  "service": "orchestrator",
-  "uptime": 42,
-  "timestamp": "2026-02-22T18:00:00.000Z"
-}
-```
-
-### Check the Inference Engine
-
-```bash
-curl http://localhost:8000/
-```
-
-Expected response: some JSON with API info or a `{"message": "Matcha Inference API"}` type response.
-
-### Check the Frontend
-
-Open your browser and go to: **[http://localhost:3000](http://localhost:3000)**
-
-You should see the Matcha AI web interface. If port 3000 was already in use, check the `npx turbo run dev` terminal output — it will say something like `⚠ Port 3000 is in use, trying 3001 instead`.
+Our CI pipeline uses **GitHub Actions**. To ensure speed and security:
+- **Docker Caching**: We utilize remote Docker layer caching to speed up build times for services.
+- **CodeQL**: Automated static analysis is enabled to scan for vulnerabilities in your code commits.
 
 ---
 
 ## Troubleshooting Common Errors
 
-### Error: `Cannot find module '@matcha/env'` or `@matcha/shared`
-
-**What it means:** The shared packages haven't been built yet, or the build failed.
-
-**Fix:**
-
-```bash
-# From the project root
-npm install
-npx turbo run build
-```
-
-If the build still fails, check the specific package. For example, for `@matcha/env`:
-
-```bash
-cd packages/env
-npm install
-npx tsc
-```
-
----
-
-### Error: `Module not found: @t3-oss/env-core` (TypeScript build error)
-
-**What it means:** The `tsconfig.json` in `../packages/env` is using an incompatible `moduleResolution` setting.
-
-**Fix:** Ensure `packages/env/tsconfig.json` has:
-
-```json
-{
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ES2021",
-    "outDir": "./dist",
-    "declaration": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
-  }
-}
-```
-
----
-
-### Error: `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'` (Python)
-
-**What it means:** You're running Python 3.9, but the code uses the `X | Y` union type syntax which is only valid in Python 3.10+.
-
-**Fix:** This has already been patched in `app/core/heatmap.py` and `app/core/analysis.py` to use `Optional[X]` from the `typing` module. If you see this error in a different file, replace any `SomeType | None` with `Optional[SomeType]` and add `from typing import Optional` at the top of the file.
-
----
-
-### Error: `Connection refused` on port 5433 (Database)
-
-**What it means:** Docker is not running, or the PostgreSQL container hasn't started yet.
-
-**Fix:**
-
-1. Open Docker Desktop and make sure it's running.
-2. Run `docker-compose up -d` from the project root.
-3. Wait ~10 seconds, then run `docker ps` to confirm `matcha_postgres` status shows `Up`.
-
----
-
-### Error: `CORS` errors in the browser
-
-**What it means:** The frontend is making requests from a URL that the Orchestrator doesn't recognize.
-
-**Fix:** Check `CORS_ORIGIN` in `services/orchestrator/.env`. It must match the exact URL your frontend is running on (including the port). If Next.js is on port `3001`, set:
-
-```env
-CORS_ORIGIN=http://localhost:3001
-```
-
----
+### Error: `Cannot find module '@matcha/env'`
+Run `npm install` and `npx turbo run build` from the root.
 
 ### Error: `Prisma` says database schema not found
-
-**What it means:** The database migrations haven't been applied to your PostgreSQL container.
-
-**Fix:**
-
-```bash
-cd services/orchestrator
-npx prisma migrate deploy
-```
+Run `make db-migrate` then `make seed`.
 
 If that doesn't work, try:
 

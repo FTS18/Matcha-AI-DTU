@@ -65,7 +65,7 @@ graph TD
    - **[`@matcha/shared`](packages/shared)**: Universal API client, WebSocket registries, and logical utilities.
    - **[`@matcha/database`](packages/database)**: Shared Prisma schema and generated client.
    - **[`@matcha/contracts`](packages/contracts)**: Centralized Zod validation schemas for all API payloads.
-   - **[`@matcha/env`](packages/env/README.md)**: Strict, boot-time environment variable validation via T3-Env.
+   - **[`@matcha/env`](./packages/env/README.md)**: Strict, boot-time environment variable validation via T3-Env.
 5. **[Inference Engine (services/inference)](services/inference/README.md)**: Python FastAPI AI pipeline (YOLO, SoccerNet, Gemini).
 
 ---
@@ -106,6 +106,7 @@ git clone https://github.com/FTs18/Matcha-AI-DTU.git && cd Matcha-AI-DTU
 make up
 
 # 4. Install & Start Development (Frontend + API + AI Engine)
+npm install
 make dev
 ```
 
@@ -164,22 +165,20 @@ This starts:
 - **PostgreSQL** on port `5433` (not 5432 — intentional to avoid local conflicts)
 - **Redis** on port `6380`
 
-Verify containers are up:
+### Step 3 — Initialize Database & Demo Data
 
 ```bash
-docker ps
-# Both matcha_postgres and matcha_redis should show "Up"
+make db-migrate
+make seed
 ```
 
----
-
-### Step 3 — Install Node.js Dependencies & Build
+### Step 4 — Install Node.js Dependencies & Build
 
 ```bash
 # Install all monorepo packages
 npm install
 
-# Build all shared TypeScript packages (@matcha/env, @matcha/ui, @matcha/shared, etc.)
+# Build all shared TypeScript packages
 npx turbo run build
 ```
 
@@ -314,7 +313,7 @@ Then open **[http://localhost:3000](http://localhost:3000)** (or `3001` if 3000 
 
 ---
 
-## 🛠 Project Structure
+## Project Structure
 
 ```text
 Matcha-AI-DTU/

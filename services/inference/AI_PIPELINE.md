@@ -64,7 +64,7 @@ With the list of scored `Events` populated, Gemini generates per-event commentar
 2. **Fallback templates** (`_FALLBACK` dict): Pre-written energy-levelled fallbacks (high/mid/low) for each event type, used when Gemini is unavailable.
 3. **Match Summary** (`generate_match_summary()`): A 3–5 sentence analytical narrative of the entire match. Capped at 5000 characters and stored on the `Match` record.
 
-### ️ Phase 4: Audio & Highlight Reel Synthesis
+### Phase 4: Audio & Highlight Reel Synthesis
 
 The highlight reel pipeline (`create_highlight_reel()`) assembles a professional-grade broadcast video:
 
@@ -119,7 +119,7 @@ After the highlight reel is built, Phase 5 runs a post-processing analytics pass
 
 ---
 
-## ️ Customising the Pipeline
+## Customising the Pipeline
 
 Developers modifying `app/core/analysis.py` should focus on the `CONFIG` dict:
 
@@ -170,5 +170,5 @@ To validate the full pipeline end-to-end, upload a video via the frontend and mo
 ## Related Documentation
 
 - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) — Full system architecture and data flow
-- [`docs/API_REFERENCE.md`](../../docs/API_REFERENCE.md) — HTTP and WebSocket API contracts
+- [`docs/API.md`](../../docs/API.md) — HTTP and WebSocket API contracts
 - [`docs/CONTRIBUTING.md`](../../docs/CONTRIBUTING.md) — Contribution guidelines

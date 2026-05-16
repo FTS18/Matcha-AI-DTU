@@ -36,6 +36,9 @@ db-migrate: ## Run database migrations locally
 db-studio: ## Open Prisma Studio
 	npx turbo run db:studio
 
+seed: ## Populate database with demo data
+	cd services/orchestrator && npx prisma db seed
+
 # --- Maintenance ---
 
 clean: ## Remove node_modules and build artifacts

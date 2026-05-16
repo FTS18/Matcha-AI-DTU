@@ -37,3 +37,17 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npx license-checker --summary --failOn "AGPL;GPL;LGPL" || echo "License check finished."
+
+  codeql:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, python
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
