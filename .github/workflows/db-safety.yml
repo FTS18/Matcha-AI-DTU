@@ -1,0 +1,46 @@
+name: Database & Prisma Safety
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'services/orchestrator/prisma/**'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'services/orchestrator/prisma/**'
+
+jobs:
+  prisma-validate:
+    name: Prisma Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Validate Schema
+        run: npx prisma validate --schema=services/orchestrator/prisma/schema.prisma
+
+  migration-audit:
+    name: SQL Migration Safety Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Dangerous SQL
+        run: |
+          # Scan for DROP or TRUNCATE commands in new migrations
+          # This catches accidental data loss before it hits production
+          DANGEROUS_OPS=$(grep -rE "DROP COLUMN|DROP TABLE|TRUNCATE" services/orchestrator/prisma/migrations/*.sql 2>/dev/null || true)
+          if [ -n "$DANGEROUS_OPS" ]; then
+            echo "::warning title=Dangerous Migration Detected::The following migrations contain destructive operations:"
+            echo "$DANGEROUS_OPS"
+          else
+            echo "No destructive migrations detected."
+          fi

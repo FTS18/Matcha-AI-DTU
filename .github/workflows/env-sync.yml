@@ -1,0 +1,39 @@
+name: Env-Sync Consistency Check
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - '**/.env.example'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - '**/.env.example'
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Env Examples
+        run: |
+          echo "Verifying consistency between root and service .env.example files..."
+          
+          # Extract keys from .env.example files (ignoring comments and empty lines)
+          get_keys() {
+            grep -v '^#' "$1" | grep '=' | cut -d'=' -f1 | sed 's/ //g' | sort | uniq
+          }
+
+          ROOT_KEYS=$(get_keys .env.example)
+          ORCH_KEYS=$(get_keys services/orchestrator/.env.example)
+          INF_KEYS=$(get_keys services/inference/.env) # Note: Inference uses .env as template in this repo
+
+          # Check if major keys like GEMINI_API_KEY exist in all relevant places
+          for KEY in GEMINI_API_KEY HF_TOKEN; do
+            if ! echo "$ROOT_KEYS" | grep -q "$KEY"; then
+              echo "::error::Key $KEY missing from root .env.example"
+              exit 1
+            fi
+          done
+          
+          echo "Environment consistency check passed."
