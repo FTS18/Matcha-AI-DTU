@@ -7,6 +7,6 @@
     "black"
   ],
   "*.md": [
-    "markdown-link-check -q -c .github/linters/mlc_config.json"
+    "npx markdown-link-check -q -c .github/linters/mlc_config.json"
   ]
 }

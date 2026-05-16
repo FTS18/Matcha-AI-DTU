@@ -1,73 +1,22 @@
 {
-  "name": "Matcha AI - Full Stack",
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "name": "Matcha AI Development",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:1": {
-      "installZsh": true,
-      "configureZshAsDefaultShell": true,
-      "upgradePackages": true
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
-    },
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.11"
-    }
-  },
-  "forwardPorts": [3000, 8000, 5432, 6380, 9001],
-  "portsAttributes": {
-    "3000": {
-      "label": "Frontend (Web)",
-      "onAutoForward": "notify"
-    },
-    "8000": {
-      "label": "Inference API",
-      "onAutoForward": "notify"
-    },
-    "5432": {
-      "label": "PostgreSQL"
-    },
-    "6380": {
-      "label": "Redis"
-    },
-    "9001": {
-      "label": "MinIO Console"
-    }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "bradlc.vscode-tailwindcss",
         "prisma.prisma",
         "ms-python.python",
-        "ms-python.vscode-pylance",
         "ms-python.black-formatter",
-        "ms-azuretools.vscode-docker",
-        "eamodio.gitlens",
-        "yzhang.markdown-all-in-one",
-        "streetsidesoftware.code-spell-checker",
-        "ms-vscode.vscode-typescript-next",
-        "styled-components.vscode-styled-components"
-      ],
-      "settings": {
-        "editor.formatOnSave": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "[python]": {
-          "editor.defaultFormatter": "ms-python.black-formatter"
-        },
-        "python.defaultInterpreterPath": "/workspaces/${localWorkspaceFolderBasename}/services/inference/venv/bin/python",
-        "typescript.preferences.importModuleSpecifier": "relative",
-        "editor.tabSize": 2,
-        "files.eol": "\n"
-      }
+        "bradlc.vscode-tailwindcss"
+      ]
     }
   },
-  "remoteEnv": {
-    "NODE_ENV": "development"
-  },
-  "postCreateCommand": "npm install && npx turbo build"
+  "forwardPorts": [3000, 4000, 8000, 5433, 6380, 9000, 9001],
+  "postCreateCommand": "npm install && pip install -r services/inference/requirements.txt",
+  "remoteUser": "codespace"
 }

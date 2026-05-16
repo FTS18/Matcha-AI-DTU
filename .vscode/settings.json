@@ -1,16 +1,21 @@
 {
- "python.defaultInterpreterPath": "${workspaceFolder}/services/inference/venv/bin/python",
- "python.linting.enabled": true,
- "python.linting.pylintEnabled": false,
- "python.linting.flake8Enabled": false,
- "python.analysis.typeCheckingMode": "basic",
- "[python]": {
- "editor.defaultFormatter": "ms-python.python",
- "editor.formatOnSave": true
- },
- "python.analysis.extraPaths": [
- "${workspaceFolder}/services/inference/app",
- "${workspaceFolder}/services/inference"
- ],
- "python-envs.pythonProjects": []
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "prisma.prisma"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

@@ -16,9 +16,11 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "eslint": "^8.57.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "markdown-link-check": "^3.14.2",
     "prettier": "latest",
     "prisma": "^5.22.0",
     "turbo": "latest",

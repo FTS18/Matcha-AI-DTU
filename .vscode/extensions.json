@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "prisma.prisma",
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "bradlc.vscode-tailwindcss",
+    "visualstudioexptteam.vscodeintellicode",
+    "tamasfe.even-better-toml",
+    "mikestead.dotenv",
+    "mechatroner.rainbow-csv"
+  ]
+}
