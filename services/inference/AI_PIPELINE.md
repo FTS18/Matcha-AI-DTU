@@ -169,6 +169,6 @@ To validate the full pipeline end-to-end, upload a video via the frontend and mo
 
 ## Related Documentation
 
-- [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) — Full system architecture and data flow
-- [`docs/API.md`](../../docs/API.md) — HTTP and WebSocket API contracts
-- [`docs/CONTRIBUTING.md`](../../docs/CONTRIBUTING.md) — Contribution guidelines
+- [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) — Full system architecture and data flow
+- [docs/API.md](../../docs/API.md) — HTTP and WebSocket API contracts
+- [docs/CONTRIBUTING.md](../../docs/CONTRIBUTING.md) — Contribution guidelines
