@@ -14,6 +14,13 @@ lint: ## Lint the entire monorepo
 format: ## Format the entire monorepo
 	npm run format
 
+check: lint ## Run all CI checks locally (lint, links, build)
+	@echo "Running Documentation Link Check..."
+	find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/.next/*" -not -path "*/.turbo/*" -not -path "*/dist/*" | xargs -n 1 npx markdown-link-check -q -c .github/linters/mlc_config.json
+	@echo "Running Full Build..."
+	npm run build
+	@echo "✅ All checks passed!"
+
 # --- Docker & Infrastructure ---
 
 up: ## Start infrastructure (DB, Redis, MinIO)

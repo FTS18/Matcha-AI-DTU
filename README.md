@@ -105,7 +105,10 @@ git clone https://github.com/FTs18/Matcha-AI-DTU.git && cd Matcha-AI-DTU
 # 3. Start Infrastructure (Postgres, Redis, MinIO)
 make up
 
-# 4. Install & Start Development (Frontend + API + AI Engine)
+# 4. Validate Locally (Optional but Recommended)
+make check
+
+# 5. Install & Start Development (Frontend + API + AI Engine)
 npm install
 make dev
 ```
