@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 import * as http from 'http';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -17,7 +18,8 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
 
 async function bootstrap() {
   try {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+    app.useLogger(app.get(Logger));
 
     // Ensure the server shuts down gracefully on SIGTERM/SIGINT
     app.enableShutdownHooks();
@@ -95,8 +97,10 @@ async function bootstrap() {
     const server = (await app.listen(PORT)) as http.Server;
     server.setTimeout(REQUEST_TIMEOUT);
 
-    console.log(` Orchestrator running on http://localhost:${PORT}/api/v1`);
+    const logger = app.get(Logger);
+    logger.log(` Orchestrator running on http://localhost:${PORT}/api/v1`);
   } catch (error) {
+    // We don't have an app instance yet if it failed before listen
     console.error('Failed to start server:', error);
     process.exit(1);
   }

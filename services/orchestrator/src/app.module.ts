@@ -5,16 +5,30 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import * as path from 'path';
+import { LoggerModule } from 'nestjs-pino';
 import { Response } from 'express';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MatchesModule } from './matches/matches.module';
 import { EventsModule } from './events/events.module';
 import { AuthModule } from './auth/auth.module';
+import { validate } from './env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validate,
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? { target: 'pino-pretty', options: { colorize: true } }
+            : undefined,
+        level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+      },
+    }),
 
     CacheModule.registerAsync({
       isGlobal: true,

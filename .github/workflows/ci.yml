@@ -3,12 +3,55 @@ name: CI, BUILD, DOCS
 on:
   push:
     branches: [main, dev]
+    # Ignore changes to documentation and non-code files
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.env.example'
+      - 'LICENSE'
   pull_request:
     branches: [main, dev]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.env.example'
+      - 'LICENSE'
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      orchestrator: ${{ steps.filter.outputs.orchestrator }}
+      inference: ${{ steps.filter.outputs.inference }}
+      web: ${{ steps.filter.outputs.web }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            orchestrator:
+              - 'services/orchestrator/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+            inference:
+              - 'services/inference/**'
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+            mobile:
+              - 'apps/mobile/**'
+              - 'packages/**'
+            shared:
+              - 'packages/**'
+
   core:
     name: Core Engine
+    needs: changes
+    if: needs.changes.outputs.orchestrator == 'true' || needs.changes.outputs.inference == 'true' || needs.changes.outputs.shared == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,10 +85,31 @@ jobs:
         run: |
           find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/.next/*" -not -path "*/.turbo/*" -not -path "*/dist/*" | xargs -n 1 npx markdown-link-check -q -c .github/linters/mlc_config.json
 
+  database-migration:
+    name: Database Migration (Dry Run)
+    needs: [core, changes]
+    if: needs.changes.outputs.orchestrator == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+      - name: Validate Schema and Generate Client
+        run: |
+          npx prisma validate --schema=packages/database/prisma/schema.prisma
+          npx prisma generate --schema=packages/database/prisma/schema.prisma
+        env:
+          DATABASE_URL: "postgresql://dummy@localhost:5432/dummy"
+
   registry-orchestrator:
     name: Container Registry (Orchestrator)
-    needs: core
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [core, changes, database-migration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.orchestrator == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -82,8 +146,8 @@ jobs:
 
   registry-inference:
     name: Container Registry (Inference)
-    needs: core
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [core, changes, database-migration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.inference == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -9,6 +9,7 @@
   "build": "prisma generate && tsc",
   "generate": "prisma generate",
   "push": "prisma db push",
+  "migrate:deploy": "prisma migrate deploy",
   "postinstall": "prisma generate"
  },
  "dependencies": {

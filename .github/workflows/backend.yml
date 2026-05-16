@@ -3,8 +3,26 @@ name: API & Database
 on:
   push:
     branches: [main, dev]
+    paths:
+      - 'services/orchestrator/**'
+      - 'services/inference/**'
+      - 'packages/database/**'
+      - 'packages/contracts/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend.yml'
   pull_request:
     branches: [main, dev]
+    paths:
+      - 'services/orchestrator/**'
+      - 'services/inference/**'
+      - 'packages/database/**'
+      - 'packages/contracts/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend.yml'
 
 jobs:
   integrity:
