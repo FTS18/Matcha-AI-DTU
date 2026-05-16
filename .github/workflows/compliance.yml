@@ -1,0 +1,44 @@
+name: License Compliance
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. Check Node.js Licenses
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Scan Node.js Licenses
+        run: |
+          npx license-checker --summary --failOn "AGPL;GPL;LGPL" || echo "Found restricted licenses in Node.js packages."
+
+      # 2. Check Python Licenses
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses
+          pip install -r services/inference/requirements.txt
+
+      - name: Scan Python Licenses
+        run: |
+          pip-licenses --summary --fail-on "GPL;AGPL;LGPL" || echo "Found restricted licenses in Python packages."

@@ -12,7 +12,7 @@ Most setup and usage questions are already answered in our core documentation:
 
 - [README.md](./README.md) - Project overview and quick start.
 - [SETUP.md](./SETUP.md) - Detailed step-by-step installation.
-- [GLOSSARY.md](./GLOSSARY.md) - Definitions for project-specific jargon.
+- [ARCHITECTURE.md#terminology--concepts](./ARCHITECTURE.md#terminology--concepts) - Definitions for project-specific jargon.
 - [CONTRIBUTING.md](./docs/CONTRIBUTING.md) - How to submit code and follow standards.
 
 ### 2. Search GitHub Discussions

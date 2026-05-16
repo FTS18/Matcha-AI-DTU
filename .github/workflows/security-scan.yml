@@ -1,0 +1,35 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  secrets:
+    name: Secret & Env Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect .env Files
+        run: |
+          # Check for any .env files that might have been accidentally committed
+          DOTENV_FILES=$(find . -name ".env" -not -path "*/node_modules/*")
+          if [ -n "$DOTENV_FILES" ]; then
+            echo "::error::Found committed .env files: $DOTENV_FILES"
+            exit 1
+          fi
+
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Configuration for gitleaks can be added to a .gitleaks.toml in root
+          # but default covers most common secrets (AWS, Google, etc.)
+          fail: true

@@ -1,4 +1,4 @@
-﻿# Application Walkthrough
+# Application Walkthrough
 
 This document provides a detailed, step-by-step walkthrough of the Matcha-AI-DTU platform from the perspective of a user. It describes every screen, interaction, and system behavior that a user encounters from the moment they open the application to the moment they view and download their complete match analysis. This document is intended to serve as both a user guide and a functional specification for contributors building new features.
 
@@ -36,7 +36,7 @@ Before the application is usable, the following services must be running:
 | Python Inference Engine | 8000 | Terminal shows `Uvicorn running on http://0.0.0.0:8000`           |
 | Next.js Frontend        | 3000 | Terminal shows `Ready in Xms` with `Local: http://localhost:3000` |
 
-If any of these services are not running, the corresponding functionality will fail. See `SETUP.md` for the full startup sequence.
+If any of these services are not running, the corresponding functionality will fail. See `./SETUP.md` for the full startup sequence.
 
 ---
 

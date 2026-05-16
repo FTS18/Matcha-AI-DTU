@@ -1,0 +1,18 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^http://localhost"
+    },
+    {
+      "pattern": "^https://github.com/fts18"
+    },
+    {
+      "pattern": "^https://aistudio.google.com/app/apikey"
+    }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 5,
+  "fallbackToGet": true,
+  "aliveStatusCodes": [200, 206]
+}

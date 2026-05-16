@@ -1,8 +1,8 @@
-﻿# Your First Contribution to Matcha-AI-DTU
+# Your First Contribution to Matcha-AI-DTU
 
 This guide is written specifically for people who have never contributed to an open-source project before. It explains every step — from finding the repository on GitHub all the way to seeing your name in the contributors list — in plain English. No prior Git experience is assumed.
 
-If you already know how to fork, clone, branch, commit, and open a PR, you can skip to `docs/CONTRIBUTING.md` which has the project-specific technical details.
+If you already know how to fork, clone, branch, commit, and open a PR, you can skip to `./CONTRIBUTING.md` which has the project-specific technical details.
 
 ---
 
@@ -44,9 +44,9 @@ This system means anyone can propose changes without risk of accidentally breaki
 A contribution can be any of these things:
 
 - Fixing a typo or improving wording in a documentation file (the easiest possible contribution).
-- Adding a missing section to `SETUP.md` or `FAQ.md`.
+- Adding a missing section to `./SETUP.md` or `./FAQ.md`.
 - Fixing a small bug in the frontend (a CSS issue, a broken link, a missing error message).
-- Adding a new feature from the `ROADMAP.md`.
+- Adding a new feature from the `./ROADMAP.md`.
 - Adding tests.
 - Improving error messages in the Python inference pipeline.
 
@@ -68,7 +68,7 @@ Read the issue description carefully. If it is unclear what needs to be done, as
 
 ### Option B: Browse the Roadmap
 
-Open `ROADMAP.md` and look for items labeled `[Beginner]`. Find one that interests you. Check if a corresponding GitHub issue already exists. If not, open a new issue referencing the roadmap item and ask to be assigned.
+Open `./ROADMAP.md` and look for items labeled `[Beginner]`. Find one that interests you. Check if a corresponding GitHub issue already exists. If not, open a new issue referencing the roadmap item and ask to be assigned.
 
 ### Claiming an Issue
 
@@ -136,9 +136,9 @@ upstream https://github.com/FTs18/Matcha-AI-DTU.git (push)
 
 ## Step 4 — Set Up the Project Locally
 
-Follow `SETUP.md` to get the full project running on your machine. For a documentation-only contribution, you do not need to run the servers — you only need a text editor. For a code contribution, you will need the full stack running.
+Follow `./SETUP.md` to get the full project running on your machine. For a documentation-only contribution, you do not need to run the servers — you only need a text editor. For a code contribution, you will need the full stack running.
 
-If you run into setup problems, check `docs/FAQ.md` first. If your issue is not there, ask in GitHub Discussions.
+If you run into setup problems, check `./FAQ.md` first. If your issue is not there, ask in GitHub Discussions.
 
 ---
 
@@ -198,7 +198,7 @@ Add the files you want to include in your commit:
 
 ```bash
 # Add a specific file:
-git add docs/FAQ.md
+git add ./FAQ.md
 
 # Add all changed files:
 git add .
@@ -222,10 +222,10 @@ The `type` must be one of:
 Examples of good commit messages:
 
 ```
-docs: add Windows venv activation note to SETUP.md
+docs: add Windows venv activation note to ./SETUP.md
 fix: resolve CORS error when Next.js starts on port 3001
 feat: add skeleton loading states to match dashboard
-docs: add GPU requirement clarification to FAQ.md
+docs: add GPU requirement clarification to ./FAQ.md
 ```
 
 Examples of bad commit messages:

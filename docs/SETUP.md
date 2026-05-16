@@ -491,7 +491,7 @@ npx tsc
 
 ### Error: `Module not found: @t3-oss/env-core` (TypeScript build error)
 
-**What it means:** The `tsconfig.json` in `packages/env` is using an incompatible `moduleResolution` setting.
+**What it means:** The `tsconfig.json` in `../packages/env` is using an incompatible `moduleResolution` setting.
 
 **Fix:** Ensure `packages/env/tsconfig.json` has:
 

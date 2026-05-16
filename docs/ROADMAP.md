@@ -12,7 +12,7 @@ If you are a contributor looking for something to work on:
 2. Check the Issues tab to see if a corresponding issue already exists.
 3. If no issue exists, open one and reference this roadmap item.
 4. Comment on the issue to express your interest before starting work.
-5. Follow the contribution workflow in `docs/CONTRIBUTING.md`.
+5. Follow the contribution workflow in `./CONTRIBUTING.md`.
 
 Complexity labels used throughout this document:
 
@@ -125,7 +125,7 @@ These tasks focus on improving the user-facing experience without requiring chan
 **Status**: Ongoing **Description**: Several components have known mobile layout issues on smaller viewports (below 375px). Audit and fix all mobile responsiveness problems. **Implementation Notes**:
 
 - Test every page at 375px (iPhone SE), 390px (iPhone 14), and 414px (iPhone Pro Max) widths.
-- Follow the existing conventions in `docs/CONTRIBUTING.md` section 9: use `text-[10px] sm:text-sm`, `size-4 sm:size-5`, and `hide-scrollbar` utilities.
+- Follow the existing conventions in `./CONTRIBUTING.md` section 9: use `text-[10px] sm:text-sm`, `size-4 sm:size-5`, and `hide-scrollbar` utilities.
 - Pay special attention to the Analytics tab heatmap image, which can overflow on narrow screens. **Files to Modify**: Various files in `apps/web/`
 
 ---
@@ -383,7 +383,7 @@ The following are known bugs that need fixing. They are all good candidates for 
 | --- | --- | --- | --- |
 | Next.js workspace root warning | Low | Build warns about multiple lockfiles causing incorrect workspace root detection. Add `outputFileTracingRoot` to `next.config.js`. | `apps/web/next.config.js` |
 | CORS_ORIGIN port mismatch | Medium | If Next.js starts on port 3001 (because 3000 is busy), the orchestrator CORS will block requests. Add auto-detection or clear documentation. | `services/orchestrator/.env` |
-| Prisma generate EPERM on Windows | Medium | Running `npx prisma generate` while the orchestrator is running fails on Windows because the DLL is locked. Document the workaround (stop the service first). | `SETUP.md` |
+| Prisma generate EPERM on Windows | Medium | Running `npx prisma generate` while the orchestrator is running fails on Windows because the DLL is locked. Document the workaround (stop the service first). | `./SETUP.md` |
 | ESLint Next.js plugin warning | Low | Build warns that the Next.js ESLint plugin is not configured. Add `plugin:@next/next/recommended` to `.eslintrc`. | `apps/web/.eslintrc.js` |
 | MinIO defined but not used | Low | The `docker-compose.yml` starts a MinIO container that nothing connects to. Either implement Phase 5.4 or document MinIO's intended future role. | `docker-compose.yml` |
 

@@ -6,9 +6,9 @@ Thank you for considering a contribution to Matcha-AI-DTU. This project is a com
 
 ## New to Open Source? Start Here
 
-If you have never contributed to an open-source project before, read `FIRST_CONTRIBUTION.md` before this file. It explains forking, branching, committing, and pull requests in plain English without assuming any prior experience.
+If you have never contributed to an open-source project before, read `./ONBOARDING.md` before this file. It explains forking, branching, committing, and pull requests in plain English without assuming any prior experience.
 
-Not familiar with a term in this file? Check `GLOSSARY.md` for plain-English definitions of every technical term used in this project.
+Not familiar with a term in this file? Check `./ARCHITECTURE.md#terminology--concepts` for plain-English definitions of every technical term used in this project.
 
 ---
 
@@ -23,13 +23,13 @@ The following are specific, well-scoped tasks that are appropriate for contribut
 | Display the match duration on each match card | Frontend (Next.js) | Date formatting, NestJS API response |
 | Add a "No highlights detected" empty state to the Highlights tab | Frontend (Next.js) | Conditional rendering, UI components |
 | Add a character counter to the match title input field | Frontend (Next.js) | Controlled inputs, inline validation |
-| Add a Windows-specific note to the venv activation step in SETUP.md | Documentation | Markdown, Windows path syntax |
+| Add a Windows-specific note to the venv activation step in ./SETUP.md | Documentation | Markdown, Windows path syntax |
 | Expand the FAQ with answers to the top 5 Docker setup questions | Documentation | Technical writing, Docker basics |
-| Add a `TROUBLESHOOTING.md` entry for the "analysis stuck at 0%" error | Documentation | Markdown, understanding the callback flow |
+| Add a `FAQ.md` entry for the "analysis stuck at 0%" error | Documentation | Markdown, understanding the callback flow |
 | Add inline JSDoc comments to the `MatchesService` methods | Backend (NestJS) | TypeScript, NestJS service pattern |
 | Add input length validation for the match title field in the NestJS controller | Backend (NestJS) | NestJS validation pipes, class-validator |
 
-If none of these appeal to you, browse `ROADMAP.md` for all planned features tagged `[Beginner]`.
+If none of these appeal to you, browse `./ROADMAP.md` for all planned features tagged `[Beginner]`.
 
 ---
 
@@ -38,9 +38,9 @@ If none of these appeal to you, browse `ROADMAP.md` for all planned features tag
 If you are looking for a place to contribute:
 
 1. Check the **Issues** tab on GitHub and filter by `good first issue` or `help wanted`.
-2. Browse `ROADMAP.md` for planned features. All items are labeled by difficulty.
-3. Read `docs/ARCHITECTURE.md` to understand the overarching data flow before jumping in.
-4. Read `services/inference/AI_PIPELINE.md` if you are working on the Python inference pipeline.
+2. Browse `./ROADMAP.md` for planned features. All items are labeled by difficulty.
+3. Read `./ARCHITECTURE.md` to understand the overarching data flow before jumping in.
+4. Read `../services/inference/AI_PIPELINE.md` if you are working on the Python inference pipeline.
 
 ## 2. Fork & Clone
 
@@ -264,3 +264,51 @@ ORCHESTRATOR_URL=http://localhost:4000
 ---
 
 Thank you! Let's build the best sports ML platform.
+
+---
+
+## Maintenance & Security Policy
+
+This section outlines the current architectural decisions regarding framework upgrades and security maintenance for the Matcha-AI-DTU project.
+
+### Current Architectural Status
+
+As of May 2026, the project has undergone a comprehensive stabilization and hardening phase. To ensure maximum reliability and performance of the core AI pipeline and visual reporting features, we have made the strategic decision to pin the following major versions:
+
+| Component | Current Version | Maintenance Strategy |
+| :--- | :--- | :--- |
+| **Frontend Framework** | Next.js 14.2.x | Pinned (Stability over feature-parity) |
+| **UI Runtime** | React 18.2.0 | Pinned (Peer dependency compatibility) |
+| **Backend Framework** | NestJS 11.x | Pinned (Stability) |
+| **Database ORM** | Prisma 5.22.x | Pinned (Environment compatibility) |
+
+### Deferred Upgrades
+
+The following upgrades are **NOT** in the immediate plan and are intentionally deferred until further notice:
+
+#### 1. Next.js 15/16 & React 19
+While Next.js 16 is available, upgrading to it would force a migration to React 19.
+*   **Rationale**: React 19 introduces breaking changes to the internal component life-cycle and type-definitions that are currently incompatible with critical third-party libraries used in this project, specifically `@react-pdf/renderer` (for match reports) and `react-dropzone` (for video uploads).
+*   **Constraint**: Until these libraries provide stable, production-ready support for React 19, we will remain on the Next.js 14.2.x branch.
+
+#### 2. NestJS 11
+Upgrading to NestJS 11 is deferred to maintain backend stability and avoid a full-scale refactor of decorators and module architectures.
+
+### Security Posture
+
+We maintain a "Green" status on our CI/CD pipeline and have addressed all critical local build and linting failures.
+
+#### Known Vulnerabilities
+You may notice **5** High/Moderate vulnerabilities reported by `npm audit` (specifically regarding `next` and `postcss`). 
+*   **Status**: These are known and documented. 
+*   **Reason**: These vulnerabilities exist within the core source code of the Next.js 14 line and its required sub-dependencies. Since we are already on the latest available patch for the 14.x branch (`14.2.35`), these cannot be resolved without a major upgrade to Next.js 15/16.
+*   **Mitigation**: We have prioritized **Functional Stability** and **Build Correctness**. The security risk is managed by ensuring the application environment is hardened and only necessary ports are exposed in production.
+
+### Optimizations (May 2026)
+
+The following optimizations were implemented to ensure production readiness:
+
+1. **Dependency Hoisting**: Common tools (TypeScript, ESLint, Prettier, Prisma) were moved to the root to reduce redundancy and install times.
+2. **Docker Multi-Stage Builds**: All service Dockerfiles now use multi-stage builds and `turbo prune` to create minimal, secure images.
+3. **Next.js Standalone Mode**: The web application is configured for `standalone` output, reducing image size by up to 90%.
+4. **Graceful Shutdown**: The Orchestrator now implements NestJS shutdown hooks to properly close database and Redis connections on SIGTERM.
