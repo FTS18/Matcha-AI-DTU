@@ -21,6 +21,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@matcha/database": "*",
     "@matcha/env": "*",
     "@matcha/eslint-config": "*",
     "@matcha/shared": "*",
