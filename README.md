@@ -93,7 +93,7 @@ graph TD
 
 ## Quick Start Guide
 
-> For a full step-by-step beginner walkthrough, see [SETUP.md](./SETUP.md).
+> For a full step-by-step beginner walkthrough, see [SETUP.md](./docs/SETUP.md).
 
 ### Prerequisites
 
@@ -302,7 +302,7 @@ Matcha-AI-DTU/
 ├── uploads/                # Global video/audio/heatmap assets (shared)
 ├── docs/
 │   ├── ARCHITECTURE.md     # Full system architecture
-│   ├── API_REFERENCE.md    # HTTP & WebSocket API contracts
+│   ├── API.md              # HTTP & WebSocket API contracts
 │   └── CONTRIBUTING.md     # Contribution guidelines & dev setup
 └── docker-compose.yml      # PostgreSQL & Redis infrastructure
 ```
@@ -313,7 +313,7 @@ Matcha-AI-DTU/
 
 This project prioritizes long-term stability and functional reliability. We maintain a strict versioning policy for core frameworks to ensure compatibility across our AI pipeline and reporting tools.
 
-For details on our security posture, known vulnerabilities, and why certain major upgrades (like React 19 or Next.js 16) are currently deferred, please refer to our **[MAINTENANCE.md](./MAINTENANCE.md)**.
+For details on our security posture, known vulnerabilities, and why certain major upgrades (like React 19 or Next.js 16) are currently deferred, please refer to our **[MAINTENANCE.md](./docs/MAINTENANCE.md)**.
 
 ---
 
@@ -322,9 +322,11 @@ For details on our security posture, known vulnerabilities, and why certain majo
 | Document | Description |
 | --- | --- |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Full system architecture — data flow, DB schema, analytics pipeline, TTS tiers, frontend tree, env var reference |
-| [docs/API_REFERENCE.md](./docs/API_REFERENCE.md) | Complete HTTP + WebSocket API contracts with request/response bodies, event type table, and score formula |
+| [docs/API.md](./docs/API.md) | Complete HTTP + WebSocket API contracts with request/response bodies, event type table, and score formula |
 | [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) | Contributing guidelines, local dev setup, adding new features, mobile responsiveness guide |
 | [services/inference/AI_PIPELINE.md](./services/inference/AI_PIPELINE.md) | Deep-dive into all 5 pipeline phases: YOLO, SoccerNet, Gemini, TTS, and analytics |
+| [docs/ONBOARDING.md](./docs/ONBOARDING.md) | Onboarding guide for new developers |
+| [docs/ALGORITHMS.md](./docs/ALGORITHMS.md) | Detailed AI logic and mathematical foundations |
 
 ---
 
