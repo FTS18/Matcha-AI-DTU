@@ -11,8 +11,8 @@ If you have questions or need assistance, please follow these steps in order:
 Most setup and usage questions are already answered in our core documentation:
 
 - **General Overview**: Read the [README.md](../README.md) for a summary of the project.
-- [SETUP.md](./SETUP.md) - Detailed step-by-step installation.
-- [ARCHITECTURE.md#terminology--concepts](./ARCHITECTURE.md#terminology--concepts) - Definitions for project-specific jargon.
+- [SETUP.md](SETUP.md) - Detailed step-by-step installation.
+- [ARCHITECTURE.md#terminology--concepts](ARCHITECTURE.md#terminology--concepts) - Definitions for project-specific jargon.
 - **Contributing**: Check [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ### 2. Search GitHub Discussions
@@ -31,7 +31,7 @@ If you can't find an answer, please start a new discussion in the **Q&A** catego
 If you are a contributor for GirlScript Summer of Code:
 
 - Follow the official GSSoC communication channels for program-wide updates.
-- Check the [Roadmap](./ROADMAP.md) to see available tasks.
+- Check the [Roadmap](ROADMAP.md) to see available tasks.
 - If an issue is already assigned to someone else, please do not ask for it unless the assignment has been inactive for more than 4 days.
 
 ## Becoming a Mentor
