@@ -1,0 +1,43 @@
+name: Database Schema Drift Detection
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Runs every night at midnight
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  drift-detection:
+    name: Check for Schema Drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install Prisma
+        run: npm install --legacy-peer-deps
+
+      - name: Verify Migration Status
+        run: npx prisma migrate status --schema=packages/database/prisma/schema.prisma
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+
+      - name: Check for Unshadowed Changes (Drift)
+        run: |
+          npx prisma migrate diff \
+            --from-schema-datamodel packages/database/prisma/schema.prisma \
+            --to-schema-datasource packages/database/prisma/schema.prisma \
+            --exit-code
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+
+      - name: Notify on Drift
+        if: failure()
+        run: |
+          echo "::error::Database schema drift detected! The live database does not match the Prisma schema."
+          # You can add a Slack or Discord webhook notification here in the future
