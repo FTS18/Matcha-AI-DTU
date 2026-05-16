@@ -48,6 +48,7 @@ services:
       retries: 3
 
   orchestrator:
+    image: ghcr.io/fts18/matcha-orchestrator:latest
     build:
       context: .
       dockerfile: services/orchestrator/Dockerfile
@@ -75,6 +76,7 @@ services:
       - ./uploads:/app/uploads
 
   inference:
+    image: ghcr.io/fts18/matcha-inference:latest
     build:
       context: services/inference
       dockerfile: Dockerfile
