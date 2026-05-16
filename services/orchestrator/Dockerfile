@@ -13,6 +13,7 @@ WORKDIR /app
 # First copy the pruned package.json and lockfile to cache dependencies
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/package-lock.json ./
+RUN npm install -g npm@latest
 RUN npm ci
 
 # Copy the full source code (only for pruned packages)
