@@ -28,11 +28,15 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@types/react": "~18.3.28",
+    "eslint-config-expo": "~8.0.1",
     "typescript": "^5.9.3"
   },
   "overrides": {
     "@xmldom/xmldom": "^0.9.10",
-    "xmldom": "^0.9.5"
+    "xmldom": "^0.9.5",
+    "tar": "^7.5.15",
+    "glob": "^11.0.1",
+    "postcss": "^8.5.14"
   },
   "private": true
 }

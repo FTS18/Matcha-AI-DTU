@@ -21,11 +21,14 @@ from app.core.highlight_manager import (
 from app.core.events import detect_all_events, detect_goals_in_video
 from app.core.tracking import TrackingManager
 from app.core.visuals import VisualsManager
-from app.core.analysis.narrative import get_fallback_commentary, compile_final_payload
+from app.core.soccer_analysis.narrative import (
+    get_fallback_commentary,
+    compile_final_payload,
+)
 from app.core.frame_cache import FrameCache
 from app.core.vision_engine import VisionEngine
 from app.core.post_processing.manager import PostProcessor
-from app.core.analysis.comms import (
+from app.core.soccer_analysis.comms import (
     emit_progress,
     emit_live_event,
     emit_tracking_frames,
@@ -89,7 +92,7 @@ _home_bin = os.path.join(os.path.expanduser("~"), "bin")
 if _home_bin not in os.environ.get("PATH", ""):
     os.environ["PATH"] = _home_bin + os.pathsep + os.environ.get("PATH", "")
 
-from app.core.analysis.config import CONFIG, UPLOADS_DIR, MUSIC_DIR, BASE_DIR
+from app.core.soccer_analysis.config import CONFIG, UPLOADS_DIR, MUSIC_DIR, BASE_DIR
 
 # Initialize frame cache
 _frame_cache = FrameCache(

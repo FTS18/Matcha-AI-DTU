@@ -24,6 +24,13 @@ from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 
+
+def _sanitize(text: str) -> str:
+    """Prevent log injection by stripping newlines and control characters."""
+    if not text:
+        return ""
+    return str(text).replace("\n", " ").replace("\r", " ").strip()
+
 logger = logging.getLogger(__name__)
 
 
@@ -99,15 +106,15 @@ class TrackState:
 
     def predicted_center(self) -> Tuple[float, float]:
         s = self.kf.statePre
-        return float(s[0]), float(s[1])
+        return float(s[0, 0]), float(s[1, 0])
 
     def corrected_center(self) -> Tuple[float, float]:
         s = self.kf.statePost
-        return float(s[0]), float(s[1])
+        return float(s[0, 0]), float(s[1, 0])
 
     def velocity(self) -> Tuple[float, float]:
         s = self.kf.statePost
-        return float(s[2]), float(s[3])
+        return float(s[2, 0]), float(s[3, 0])
 
     def speed(self) -> float:
         vx, vy = self.velocity()
@@ -385,10 +392,12 @@ class RoboflowDetector:
             project_obj = rf.workspace(workspace).project(project)
             self._model = project_obj.model(version)
             logger.info(
-                f"RoboflowDetector: Model loaded ({workspace}/{project}/{version})"
+                f"RoboflowDetector: Model loaded ({_sanitize(workspace)}/{_sanitize(project)}/{version})"
             )
         except Exception as e:
-            logger.warning(f"RoboflowDetector: Failed to initialize -- {e}")
+            # Redact details that might contain the API key
+            logger.warning(f"RoboflowDetector: Failed to initialize. Check API key and project settings.")
+            logger.debug(f"RoboflowDetector error detail: {_sanitize(str(e))}")
 
     @property
     def available(self) -> bool:

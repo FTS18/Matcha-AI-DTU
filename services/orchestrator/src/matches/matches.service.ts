@@ -60,14 +60,21 @@ export class MatchesService {
         );
       }
 
-      fileName = `${Date.now()}-${sanitizedName}`;
-      const uploadsDir = path.join(process.cwd(), '..', '..', 'uploads');
+      const uniquePrefix = Math.random().toString(36).substring(2, 15);
+      fileName = `${Date.now()}-${uniquePrefix}-${sanitizedName}`;
+      const uploadsDir = path.resolve(process.cwd(), '..', '..', 'uploads');
 
       try {
         if (!fs.existsSync(uploadsDir)) {
           fs.mkdirSync(uploadsDir, { recursive: true });
         }
         filePath = path.join(uploadsDir, fileName);
+
+        // Security Check: Ensure the resolved path is still within uploadsDir
+        if (!filePath.startsWith(uploadsDir)) {
+          throw new Error('Path traversal detected');
+        }
+
         fs.writeFileSync(filePath, file.buffer);
       } catch (error) {
         this.logger.error(`Failed to save upload: ${(error as Error).message}`);

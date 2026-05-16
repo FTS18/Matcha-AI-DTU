@@ -1,7 +1,7 @@
 import logging
 import torch
 from typing import Optional, Tuple, Any
-from app.core.analysis.config import CONFIG
+from app.core.soccer_analysis.config import CONFIG
 
 logger = logging.getLogger(__name__)
 

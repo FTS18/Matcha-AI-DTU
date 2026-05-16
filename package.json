@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "apps/web",
+    "apps/mobile",
     "packages/*",
     "services/*"
   ],
@@ -14,7 +15,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "eslint": "^8.57.1",
+    "eslint": "^10.4.0",
     "prettier": "latest",
     "prisma": "^5.22.0",
     "turbo": "latest",
@@ -41,7 +42,10 @@
     "minimatch": "^3.1.5",
     "minimist": "^1.2.8",
     "multer": "1.4.4-lts.1",
-    "next": "^14.2.35",
+    "next": {
+      ".": "^14.2.35",
+      "postcss": "^8.5.14"
+    },
     "node-notifier": "^10.0.1",
     "picomatch": "^4.0.4",
     "postcss": "^8.5.14",
@@ -53,6 +57,12 @@
     "tar": "^7.5.15",
     "tmp": "^0.2.3",
     "tough-cookie": "^4.1.4",
-    "webpack": "^5.106.2"
+    "webpack": "^5.106.2",
+    "expo": {
+      "tar": "^7.5.15"
+    },
+    "@expo/cli": {
+      "tar": "^7.5.15"
+    }
   }
 }

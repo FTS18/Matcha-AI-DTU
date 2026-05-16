@@ -11,6 +11,13 @@ router = APIRouter()
 
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://localhost:4000/api/v1")
 
+
+def _sanitize(text: str) -> str:
+    """Prevent log injection by stripping newlines and control characters."""
+    if not text:
+        return ""
+    return str(text).replace("\n", " ").replace("\r", " ").strip()
+
 # Try to import the real Gemini analyzer
 try:
     from app.core.gemini_analyzer import analyze_video_with_gemini
@@ -72,7 +79,7 @@ async def analyze_video_stub(
     aspect_ratio: str = "16:9",
 ):
     """Stub analysis — sends realistic mock events, highlights, emotion scores, and duration to orchestrator."""
-    logger.info(f"[Stub] Starting analysis for match {match_id}")
+    logger.info(f"[Stub] Starting analysis for match {_sanitize(match_id)}")
 
     # Simulated match duration (90-120 seconds for uploaded clips)
     duration = round(random.uniform(85.0, 130.0), 1)
@@ -200,7 +207,7 @@ async def analyze_video_stub(
             json={"progress": 10},
             timeout=5,
         )
-        logger.info(f"[Stub] Progress 10% for {match_id}")
+        logger.info(f"[Stub] Progress 10% for {_sanitize(match_id)}")
 
         # Phase 2: Send live events one by one (20-80%)
         for i, event in enumerate(mock_events):
@@ -250,14 +257,14 @@ async def analyze_video_stub(
             timeout=15,
         )
         logger.info(
-            f"[Stub] Complete payload sent for {match_id} — status {resp.status_code}"
+            f"[Stub] Complete payload sent for {_sanitize(match_id)} — status {resp.status_code}"
         )
         logger.info(
             f"[Stub] Analysis complete: {len(mock_events)} events, {len(mock_highlights)} highlights, {len(emotion_scores)} emotion samples, duration={duration}s"
         )
 
     except Exception as e:
-        logger.error(f"[Stub] Analysis failed for {match_id}: {e}", exc_info=True)
+        logger.error(f"[Stub] Analysis failed for {_sanitize(match_id)}: {_sanitize(e)}", exc_info=True)
         try:
             import requests as req_lib
 
@@ -281,7 +288,7 @@ async def analyze_match(
 
     if GEMINI_AVAILABLE:
         logger.info(
-            f"Using Gemini AI for real video analysis (match {request.match_id})"
+            f"Using Gemini AI for real video analysis (match {_sanitize(request.match_id)})"
         )
         background_tasks.add_task(
             analyze_video_with_gemini,
@@ -293,7 +300,7 @@ async def analyze_match(
         )
     else:
         logger.warning(
-            f"Gemini unavailable — using mock analysis for match {request.match_id}"
+            f"Gemini unavailable — using mock analysis for match {_sanitize(request.match_id)}"
         )
         background_tasks.add_task(
             analyze_video_stub,

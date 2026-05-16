@@ -30,7 +30,7 @@ class PostProcessor:
         """Orchestrate all post-analysis generation tasks."""
         from app.core.visuals import VisualsManager
         from app.core.video import create_highlight_reel
-        from app.core.analysis.narrative import (
+        from app.core.soccer_analysis.narrative import (
             calculate_emotion_scores,
             compile_final_payload,
         )
