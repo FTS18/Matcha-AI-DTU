@@ -66,5 +66,5 @@ def _download_youtube_video(
 
             raise Exception("Download completed but file not found")
     except Exception as e:
-        logger.error(f"yt-dlp download failed: {e}")
-        raise ValueError(f"Failed to download YouTube video: {e}")
+        logger.error("yt-dlp download failed (internal error suppressed for security)")
+        raise ValueError("Failed to download YouTube video")

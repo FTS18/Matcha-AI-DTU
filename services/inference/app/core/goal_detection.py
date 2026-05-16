@@ -347,7 +347,7 @@ class BallDetector:
         try:
             results = self._model(frame, conf=Cfg.YOLO_CONF, verbose=False)
         except Exception as e:
-            logger.debug(f"YOLO error: {e}")
+            logger.debug(f"YOLO detector error: {str(e)[:100]}")
             return None
 
         best: Optional[BallObs] = None
@@ -385,6 +385,7 @@ class RoboflowDetector:
     """Roboflow API wrapper for specialized ball/event detection."""
 
     def __init__(self, api_key: str, workspace: str, project: str, version: int = 1):
+        self._api_key = api_key
         self._model = None
         try:
             from roboflow import Roboflow
@@ -397,10 +398,13 @@ class RoboflowDetector:
             )
         except Exception as e:
             # Redact details that might contain the API key
-            logger.warning(
-                f"RoboflowDetector: Failed to initialize. Check API key and project settings."
+            safe_error = (
+                str(e).replace(self._api_key, "REDACTED") if self._api_key else str(e)
             )
-            logger.debug(f"RoboflowDetector error detail: {_sanitize(str(e))}")
+            logger.warning(
+                f"RoboflowDetector: Failed to initialize. Check project settings."
+            )
+            logger.debug(f"RoboflowDetector error detail: {safe_error}")
 
     @property
     def available(self) -> bool:
@@ -431,7 +435,11 @@ class RoboflowDetector:
                     best = obs
             return best
         except Exception as e:
-            logger.error(f"Roboflow detection error: {e}")
+            # Sanitize error to avoid leaking API key if it's in the error message
+            safe_error = (
+                str(e).replace(self._api_key, "REDACTED") if self._api_key else str(e)
+            )
+            logger.debug(f"RoboflowDetector error detail: {safe_error}")
             return None
 
 

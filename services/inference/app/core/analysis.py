@@ -1,28 +1,19 @@
 import cv2
 import logging
-import sys
 import requests
 import os
 import numpy as np
 import torch
-import subprocess
-import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Union
-from collections import Counter, deque
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import deque
 
-from app.core.audio_engine import calculate_dynamic_audio_volumes
 from app.core.highlight_manager import (
     select_highlights,
-    select_highlights_with_narrative,
-    group_related_events,
 )
-from app.core.events import detect_all_events, detect_goals_in_video
+from app.core.events import detect_all_events
 from app.core.tracking import TrackingManager
-from app.core.visuals import VisualsManager
 from app.core.soccer_analysis.narrative import (
-    get_fallback_commentary,
     compile_final_payload,
 )
 from app.core.frame_cache import FrameCache
@@ -92,7 +83,7 @@ _home_bin = os.path.join(os.path.expanduser("~"), "bin")
 if _home_bin not in os.environ.get("PATH", ""):
     os.environ["PATH"] = _home_bin + os.pathsep + os.environ.get("PATH", "")
 
-from app.core.soccer_analysis.config import CONFIG, UPLOADS_DIR, MUSIC_DIR, BASE_DIR
+from app.core.soccer_analysis.config import CONFIG, UPLOADS_DIR, MUSIC_DIR
 
 # Initialize frame cache
 _frame_cache = FrameCache(
@@ -110,7 +101,7 @@ def _detect_gpu_availability():
             logger.info(f" GPU acceleration enabled: {torch.cuda.get_device_name(0)}")
         return gpu_available
     except Exception:
-        pass
+        return False
     return False
 
 
@@ -168,7 +159,9 @@ def analyze_video(
                 progress_callback=yt_progress,
             )
         except Exception as e:
-            logger.error(str(e))
+            logger.error(
+                "Failed to download YouTube video (source URL or connection error)"
+            )
             report_failure(match_id)
             return {"error": "Failed to download YouTube video"}
 
@@ -397,7 +390,9 @@ def analyze_video(
                         timeout=1,
                     )
                 except Exception:
-                    pass
+                    logger.debug(
+                        "Failed to emit progress (orchestrator likely unavailable)"
+                    )
 
             # ── YOLO detection & tracking ────────────────────────────────────
             current_motion = (
@@ -525,7 +520,7 @@ def analyze_video(
                 timeout=1,
             )
         except Exception:
-            pass
+            logger.debug("Non-critical progress update failed")
 
         # ── Tracking & Refinement ─────────────────────────────────────────────
         tracker = TrackingManager(model, ball_model, CONFIG)
@@ -545,7 +540,7 @@ def analyze_video(
                 if stage:
                     logger.info(f"Progress {pct}%: {stage}")
             except Exception:
-                pass
+                logger.debug("Granular progress update failed (silent skip)")
 
         # ── Event Detection (Multi-Engine) ──────────────────────────────────
         raw_events = detect_all_events(
@@ -651,7 +646,7 @@ def analyze_video(
         return {"status": "completed", "match_id": match_id}
 
     except Exception as e:
-        logger.exception(f"Analysis failed: {e}")
+        logger.exception("Pipeline analysis failed")
         if compressed and os.path.exists(video_path):
             try:
                 os.remove(video_path)

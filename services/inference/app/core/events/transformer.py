@@ -1,5 +1,4 @@
 import logging
-import cv2
 from typing import List, Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ def spot_transformer_actions(
                 "finalScore": round(vit_res["confidence"] * 10, 1),
                 "source": "vision_transformer",
             }
-    except Exception as e:
-        logger.debug(f"ViT analysis error: {e}")
+    except Exception:
+        logger.debug("ViT analysis failed (silent)")
 
     return None

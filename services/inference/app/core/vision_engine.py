@@ -1,6 +1,6 @@
 import logging
 import torch
-from typing import Optional, Tuple, Any
+from typing import Tuple, Any
 from app.core.soccer_analysis.config import CONFIG
 
 logger = logging.getLogger(__name__)
@@ -40,8 +40,10 @@ class VisionEngine:
                 logger.info(" VisionEngine: Using CPU for inference")
 
             return True
-        except Exception as e:
-            logger.error(f" VisionEngine: Failed to initialize models: {e}")
+        except Exception:
+            logger.error(
+                "VisionEngine: Failed to initialize models (internal error suppressed)"
+            )
             return False
 
     def get_models(self) -> Tuple[Any, Any]:
