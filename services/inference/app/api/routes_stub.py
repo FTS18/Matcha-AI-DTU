@@ -18,6 +18,7 @@ def _sanitize(text: str) -> str:
         return ""
     return str(text).replace("\n", " ").replace("\r", " ").strip()
 
+
 # Try to import the real Gemini analyzer
 try:
     from app.core.gemini_analyzer import analyze_video_with_gemini
@@ -264,7 +265,10 @@ async def analyze_video_stub(
         )
 
     except Exception as e:
-        logger.error(f"[Stub] Analysis failed for {_sanitize(match_id)}: {_sanitize(e)}", exc_info=True)
+        logger.error(
+            f"[Stub] Analysis failed for {_sanitize(match_id)}: {_sanitize(e)}",
+            exc_info=True,
+        )
         try:
             import requests as req_lib
 

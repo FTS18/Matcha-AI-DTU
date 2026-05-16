@@ -73,9 +73,7 @@ def test_ball_tracker():
         logger.info(f" Tracker created")
 
         # Test with dummy detections
-        detection = BallObs(
-            cx=640, cy=360, w=10, h=10, conf=0.95, frame_id=1
-        )
+        detection = BallObs(cx=640, cy=360, w=10, h=10, conf=0.95, frame_id=1)
 
         cx, cy = tracker.update(detection)
         logger.info(f" Tracker update successful, tracked center: ({cx}, {cy})")
@@ -96,7 +94,7 @@ def test_analysis_integration():
     try:
         # Import analysis which uses goal_detection
         from app.core import analysis
-        
+
         # Check if GOAL_DETECTION_AVAILABLE is present
         available = getattr(analysis, "GOAL_DETECTION_AVAILABLE", False)
         logger.info(f" GOAL_DETECTION_AVAILABLE: {available}")

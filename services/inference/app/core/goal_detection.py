@@ -31,6 +31,7 @@ def _sanitize(text: str) -> str:
         return ""
     return str(text).replace("\n", " ").replace("\r", " ").strip()
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -396,7 +397,9 @@ class RoboflowDetector:
             )
         except Exception as e:
             # Redact details that might contain the API key
-            logger.warning(f"RoboflowDetector: Failed to initialize. Check API key and project settings.")
+            logger.warning(
+                f"RoboflowDetector: Failed to initialize. Check API key and project settings."
+            )
             logger.debug(f"RoboflowDetector error detail: {_sanitize(str(e))}")
 
     @property
