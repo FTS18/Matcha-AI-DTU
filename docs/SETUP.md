@@ -4,13 +4,13 @@
 
 ---
 
-## 📖 Table of Contents
+## Table of Contents
 
 1. [What is this project?](#what-is-this-project)
-2. [⚡ Super-Fast Setup (Makefile)](#-super-fast-setup-makefile)
-3. [📦 One-Click Setup (Dev Containers)](#-one-click-setup-dev-containers)
-4. [System Requirements & Prerequisites](#-system-requirements--prerequisites)
-5. [Step 1: Clone the Repository](#-step-1-clone-the-repository)
+2. [Super-Fast Setup (Makefile)](#super-fast-setup-makefile)
+3. [One-Click Setup (Dev Containers)](#one-click-setup-dev-containers)
+4. [System Requirements & Prerequisites](#system-requirements--prerequisites)
+5. [Step 1: Clone the Repository](#step-1-clone-the-repository)
 ...
 
 ---
@@ -31,7 +31,7 @@ All of them need to be running simultaneously for the app to work correctly.
 
 ---
 
-## ⚡ Super-Fast Setup (Makefile)
+## Super-Fast Setup (Makefile)
 
 If you are on macOS or Linux, you can skip the manual steps by using our **Matcha CLI**.
 
@@ -49,7 +49,7 @@ If you are on macOS or Linux, you can skip the manual steps by using our **Match
 
 ---
 
-## 📦 One-Click Setup (Dev Containers)
+## One-Click Setup (Dev Containers)
 
 If you have **VS Code** and **Docker Desktop**:
 1. Open this project in VS Code.
@@ -59,7 +59,7 @@ If you have **VS Code** and **Docker Desktop**:
 
 ---
 
-## 💻 System Requirements & Prerequisites
+## System Requirements & Prerequisites
 
 Before you start, install these tools on your machine. Check if you already have them by running the commands shown.
 
@@ -142,7 +142,7 @@ If not installed: https://git-scm.com/downloads
 
 ---
 
-## 📁 Step 1: Clone the Repository
+## Step 1: Clone the Repository
 
 Open your terminal and navigate to a folder where you want to put the project (e.g., your home directory or a `Projects` folder), then clone:
 
@@ -158,7 +158,7 @@ cd Matcha-AI-DTU
 
 ---
 
-## 🐳 Step 2: Start the Infrastructure (Docker)
+## Step 2: Start the Infrastructure (Docker)
 
 The project needs a running PostgreSQL database and a Redis cache. Docker Compose starts both with a single command.
 
@@ -186,7 +186,7 @@ You should see two containers running: `matcha_postgres` and `matcha_redis`. Bot
 
 ---
 
-## 📦 Step 3: Set Up Node.js & Install Dependencies
+## Step 3: Set Up Node.js & Install Dependencies
 
 This project is a **monorepo** managed by **Turborepo**. All JavaScript packages (frontend, orchestrator, and shared libraries like `@matcha/ui`, `@matcha/env`, etc.) are installed and linked together with a single command from the root.
 
@@ -252,7 +252,7 @@ cd ../..
 
 ---
 
-## 🧠 Step 4: Set Up the Python AI Inference Service
+## Step 4: Set Up the Python AI Inference Service
 
 The AI engine is a Python service that runs separately. It has its own dependencies (PyTorch, OpenCV, Ultralytics YOLO, etc.) that need to be installed in an **isolated virtual environment** so they don't conflict with system Python packages.
 
@@ -321,7 +321,7 @@ cd ../..
 
 ---
 
-## 🔐 Step 5: Configure Environment Variables
+## Step 5: Configure Environment Variables
 
 Environment variables are secret configuration values (like API keys and database passwords) that are kept out of the git repository for security reasons. You must create these files manually.
 
@@ -489,7 +489,7 @@ You should see the Matcha AI web interface. If port 3000 was already in use, che
 
 ---
 
-## ❓ Troubleshooting Common Errors
+## Troubleshooting Common Errors
 
 ### Error: `Cannot find module '@matcha/env'` or `@matcha/shared`
 
@@ -610,7 +610,7 @@ npx kill-port 4000
 
 ---
 
-## 🏁 Quick Reference: Full Startup Checklist
+## Quick Reference: Full Startup Checklist
 
 Every time you want to run the project after a fresh terminal session:
 
