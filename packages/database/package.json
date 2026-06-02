@@ -13,7 +13,7 @@
   "postinstall": "prisma generate"
  },
  "dependencies": {
-  "@prisma/client": "^5.22.0"
+  "@prisma/client": "^7.8.0"
  },
  "devDependencies": {
   "@matcha/typescript-config": "*"
