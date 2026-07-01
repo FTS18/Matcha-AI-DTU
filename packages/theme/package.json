@@ -10,7 +10,7 @@
  },
  "devDependencies": {
   "@matcha/typescript-config": "*",
-  "tailwindcss": "^4.3.0",
-  "typescript": "^5.9.3"
+  "tailwindcss": "^4.3.2",
+  "typescript": "^6.0.3"
  }
 }
