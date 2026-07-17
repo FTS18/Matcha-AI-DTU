@@ -360,6 +360,7 @@ For details on our security posture, known vulnerabilities, and why certain majo
 | --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full system architecture — data flow, DB schema, analytics pipeline, TTS tiers, frontend tree, env var reference |
 | [docs/API.md](docs/API.md) | Complete HTTP + WebSocket API contracts with request/response bodies, event type table, and score formula |
+| [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | Quick-reference table of all REST API endpoints with request/response examples |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contributing guidelines, local dev setup, adding new features, mobile responsiveness guide |
 | [services/inference/AI_PIPELINE.md](services/inference/AI_PIPELINE.md) | Deep-dive into all 5 pipeline phases: YOLO, SoccerNet, Gemini, TTS, and analytics |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | Onboarding guide for new developers |
