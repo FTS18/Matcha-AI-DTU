@@ -70,6 +70,25 @@ graph TD
 
 ---
 
+## AI Pipeline
+
+The inference engine processes uploaded sports footage through a sequential 5-phase pipeline. Each phase hands off its output to the next, culminating in a fully produced highlight reel with AI commentary.
+
+```mermaid
+flowchart TD
+    A([🎥 Raw Input Video])
+    B["🎯 Phase 1 — Detection\nYOLO v8 · ball and player tracking\npose estimation across frames"]
+    C["⚽ Phase 2 — Event Recognition\nSoccerNet · 11 event types detected\nmotion-peak fallback if needed"]
+    D["💬 Phase 3 — Commentary Generation\nGemini 2.0 Flash LLM\n40–60 words per event · late-game intensity boost"]
+    E["🔊 Phase 4 — Text-to-Speech\nTier 1 · Kokoro-82M British female voice\nTier 2 · Microsoft edge-tts fallback\nTier 3 · FFmpeg silent audio fallback"]
+    F["🎬 Phase 5 — Highlight Reel Assembly\nFFmpeg · clip cutting · text overlay\naudio mix · crowd ambience · background music"]
+    G([✅ Final Highlight MP4])
+
+    A --> B --> C --> D --> E --> F --> G
+```
+
+> 📄 For a full deep-dive into each phase including algorithms and configuration, see [`services/inference/AI_PIPELINE.md`](services/inference/AI_PIPELINE.md).
+
 ## Key Features
 
 - **Automated Video Analysis**: Upload raw sports footage and let the system automatically analyze the content through a 5-phase AI pipeline.
