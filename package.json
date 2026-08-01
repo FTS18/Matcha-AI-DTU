@@ -17,21 +17,21 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
-    "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
+    "@changesets/cli": "^2.31.1",
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.4",
     "@swc/cli": "^0.8.1",
-    "@swc/core": "^1.15.33",
-    "cacache": "^19.0.1",
-    "eslint": "^8.57.1",
+    "@swc/core": "^1.15.46",
+    "cacache": "^21.0.1",
+    "eslint": "^10.8.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
-    "markdown-link-check": "^3.14.2",
+    "lint-staged": "^17.2.0",
+    "markdown-link-check": "^3.15.0",
     "prettier": "latest",
-    "prisma": "^5.22.0",
-    "secretlint": "^13.0.2",
+    "prisma": "^7.9.1",
+    "secretlint": "^13.0.4",
     "swc-loader": "^0.2.7",
     "turbo": "latest",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "packageManager": "npm@10.9.8",
   "dependencies": {
