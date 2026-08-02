@@ -5,53 +5,66 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, User, Film } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
+  // 🌙 Dark Mode Logic
+  const [theme, setTheme] = useState("light");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.classList.toggle("dark", saved === "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+  };
+
   return (
     <nav className="w-full border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50 shadow-2xl">
-      {/* Content Layer */}
       <div className="relative z-10 flex items-center justify-between py-3 md:py-4 px-4 sm:px-6 md:px-8 max-w-360 mx-auto">
+
+        {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 sm:gap-3 transition-opacity duration-200 hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm group"
-          aria-label="Go to homepage"
+          className="flex items-center gap-2 sm:gap-3 transition-opacity duration-200 hover:opacity-80"
         >
-          {/* Custom Logo Image */}
-          <div className="relative size-7 sm:size-8 shrink-0 overflow-hidden transform group-hover:scale-105 transition-transform duration-300">
+          <div className="relative size-7 sm:size-8 shrink-0 overflow-hidden">
             <Image
               src="/favicons/logo.png"
               alt="Matcha AI Logo"
               fill
-              className="object-contain drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]"
-              sizes="(max-width: 640px) 28px, 32px"
+              className="object-contain"
             />
           </div>
 
           <div className="flex items-baseline gap-1">
-            <span className="font-display tracking-[0.12em] text-[16px] sm:text-[18px] md:text-[20px] text-foreground drop-shadow-md">
+            <span className="font-display tracking-[0.12em] text-foreground">
               MATCHA
             </span>
-            <span className="font-display tracking-[0.12em] ml-0.5 text-[16px] sm:text-[18px] md:text-[20px] text-primary drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]">
+            <span className="font-display tracking-[0.12em] text-primary">
               AI
             </span>
           </div>
-          <div className="hidden lg:block w-px h-4 mx-2 bg-border shrink-0" />
-          <span className="hidden lg:inline-block font-mono text-[9px] text-muted-foreground uppercase tracking-[0.14em]">
-            DTU EDITION
-          </span>
         </Link>
 
-        {/* Centre nav links */}
+        {/* Center Links */}
         <div className="hidden md:flex items-center gap-1">
           <Link
             href="/highlights"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border transition-colors font-mono text-[10px] uppercase tracking-widest ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm ${
               pathname === "/highlights"
-                ? "bg-primary/15 border-primary/40 text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border/50 hover:bg-white/5"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Film className="size-3" />
@@ -59,53 +72,42 @@ export function Navbar() {
           </Link>
         </div>
 
-        {/* Global System Status & Auth */}
+        {/* Right Section */}
         <div className="flex items-center gap-3 sm:gap-4 md:gap-5">
-          {/* Mobile highlights icon (hidden on md+ where centre nav is shown) */}
-          <Link
-            href="/highlights"
-            className={`md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded-sm border transition-colors ${
-              pathname === "/highlights"
-                ? "bg-primary/15 border-primary/40 text-primary"
-                : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-white/5"
-            }`}
-            title="Highlights Feed"
+
+          {/* 🌙 Dark Mode Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="text-xl px-2 py-1 rounded hover:bg-white/10 transition"
+            title="Toggle Theme"
           >
-            <Film className="size-3.5" />
-          </Link>
+            {theme === "light" ? "🌙" : "☀️"}
+          </button>
 
-          <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-destructive/20 border border-destructive/30 rounded-sm backdrop-blur-sm">
-            <span className="size-1.5 rounded-full animate-blink bg-destructive shadow-[0_0_8px_rgba(var(--color-destructive),0.8)]" />
-            <span className="font-mono text-[9px] text-destructive uppercase tracking-[0.14em] font-bold mt-px drop-shadow-sm">
-              LIVE
-            </span>
-          </div>
-
+          {/* Auth Section */}
           {user ? (
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden md:flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-sm border border-border/50 backdrop-blur-sm">
+              <div className="hidden md:flex items-center gap-2">
                 <User className="size-3 text-primary" />
-                <span className="font-mono text-[10px] text-foreground uppercase tracking-[0.14em] mt-px truncate max-w-20 lg:max-w-30">
+                <span className="text-foreground text-xs">
                   {user.name}
                 </span>
               </div>
+
               <button
                 onClick={logout}
-                className="flex items-center gap-2 bg-destructive/10 hover:bg-destructive/20 text-destructive px-2 sm:px-3 py-1.5 rounded-sm border border-destructive/30 transition-colors cursor-pointer"
-                title="Sign Out"
+                className="flex items-center gap-2 text-destructive px-2 py-1"
               >
                 <LogOut className="size-3" />
-                <span className="hidden sm:inline-block font-mono text-[10px] uppercase tracking-widest mt-px">
-                  Logout
-                </span>
+                Logout
               </button>
             </div>
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-3 sm:px-4 py-1.5 rounded-sm border border-primary/30 transition-colors"
+              className="text-primary px-3 py-1"
             >
-              <span className="font-mono text-[10px] uppercase tracking-widest mt-px font-bold">Sign In</span>
+              Sign In
             </Link>
           )}
         </div>
