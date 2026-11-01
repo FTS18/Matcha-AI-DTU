@@ -14,24 +14,24 @@
  "dependencies": {
   "@matcha/shared": "*",
   "@matcha/theme": "*",
-  "@react-pdf/renderer": "^4.5.1",
+  "@react-pdf/renderer": "^4.9.0",
   "clsx": "^2.1.1",
-  "socket.io-client": "^4.8.3",
-  "tailwind-merge": "^3.6.0"
+  "socket.io-client": "^4.8.4",
+  "tailwind-merge": "^3.7.0"
  },
  "devDependencies": {
   "@matcha/typescript-config": "*",
-  "@types/react": "^18.3.28",
-  "framer-motion": "^12.38.0",
-  "lucide-react": "^0.574.0",
-  "react": "^18.2.0",
-  "react-dom": "^18.2.0",
-  "typescript": "^5.9.3"
+  "@types/react": "^19.3.0",
+  "framer-motion": "^14.7.1",
+  "lucide-react": "^1.64.0",
+  "react": "^19.3.1",
+  "react-dom": "^19.3.1",
+  "typescript": "^7.0.2"
  },
  "peerDependencies": {
-  "framer-motion": "^12.38.0",
-  "lucide-react": "^0.574.0",
-  "react": "^18.2.0",
-  "react-dom": "^18.2.0"
+  "framer-motion": "^14.7.1",
+  "lucide-react": "^1.64.0",
+  "react": "^19.3.1",
+  "react-dom": "^19.3.1"
  }
 }
